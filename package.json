@@ -1,0 +1,11 @@
+{
+	"name": "LED-Matrix",
+	"description": "Fast, unopinionated, minimalist web framework",
+	"version": "0.0.1",
+	"author": "Anton Bracke",
+	"dependencies": {
+		"express": "^4.16.2",
+		"express-ws": "^3.0.0",
+		"serialport": "^5.0.0"
+	}
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="theme-color" content="#317EFB">
+	<title>LED</title>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" type="text/css" href="styles/inline.css">
+
+	<link rel="manifest" href="/manifest.json">
+	<link rel="shortcut icon" type="image/x-icon" href="images/icons/favicon.ico">
+	<!-- Add to home screen for Safari on iOS -->
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black">
+	<meta name="apple-mobile-web-app-title" content="LED">
+	<link rel="apple-touch-icon" href="images/icons/icon-152x152.png">
+	<meta name="msapplication-TileImage" content="images/icons/icon-144x144.png">
+	<meta name="msapplication-TileColor" content="#2F3BA2">
+</head>
+<body>
+
+	<div id="app">
+		<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+			<a class="navbar-brand" href="#">LED</a>
+			<div class="collapse navbar-collapse" id="navbarsExampleDefault">
+				<ul class="navbar-nav mr-auto">
+					<li class="nav-item active">
+						<a class="nav-link" href="#">{{ running_game }}<span class="sr-only">(current)</span></a>
+					</li>
+				</ul>
+				<div class="">
+					<button v-if="running_game" type="button" v-on:click="stopGame()" class="btn btn-secondary"><i class="fa fa-stop" aria-hidden="true"></i></button>
+					<span v-if="!connected" class="badge badge-pill badge-danger">OFFLINE</span>
+					<span v-else-if="status" class="badge badge-pill badge-success">Serial CONNECTED</span>
+					<span v-else-if="status" class="badge badge-pill badge-success">Serial CONNECTED</span>
+					<span v-else class="badge badge-pill badge-danger">Serial DISCONNECTED</span>
+				</div>
+			</div>
+		</nav>
+
+		<div class="container-fluid">
+			<table v-if="!running_game" id="game_list" class="table table-striped">
+				<thead>
+					<tr>
+						<th>Games</th>
+						<th width="1%"></th>
+					</tr>
+				</thead>
+				<tr v-for="game in games">
+					<td>{{ game }}</td>
+					<td><button type="button" v-on:click="launchGame(game)" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button></td>
+				</tr>
+			</table>
+			<div v-else id="controls">
+				<div v-if="debug" class="leds">
+					<div v-for="led in leds" v-bind:style="{ background: rgb(led) }" class="led"></div>
+				</div>
+				<div v-if="team" class="active">
+					<div class="row up">
+						<button type="button" v-on:click="control('up')" class="btn btn-secondary"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+					</div>
+					<div class="row">
+						<button type="button" v-on:click="control('left')" class="btn btn-secondary"><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
+						<button type="button" v-on:click="control('down')" class="btn btn-secondary"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+						<button type="button" v-on:click="control('right')" class="btn btn-secondary"><i class="fa fa-arrow-right" aria-hidden="true"></i></button>
+					</div>
+					<div v-if="debug">
+						<button type="button" v-on:click="input('step')" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button>
+					</div>
+				</div>
+				<div v-else class="team_selection">
+					<button type="button" v-on:click="team=1" class="btn btn-secondary">Team A</button>
+					<button type="button" v-on:click="team=2" class="btn btn-secondary">Team B</button>
+				</div>
+			</div>
+		</div><!-- /.container -->
+	</div>
+
+	<script src="https://unpkg.com/vue"></script>
+	<script src="scripts/app.js" async></script>
+</body>
+</html>
