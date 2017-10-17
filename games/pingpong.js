@@ -20,12 +20,16 @@ exports.init = function init() {
 	ai      = new rect('ai', RGB(0, 255, 0), 0, game.height/2-1, 1, 3);
 	player  = new rect('player', RGB(0, 255, 0), game.width-1, game.height/2-1, 1, 3);
 	// Ball
-	ball    = new rect('ball', RGB(255, 0, 0), 1, game.height/2-1, 1, 1);
+	ball    = new rect('ball', RGB(255, 0, 0), game.width/2, game.height/2, 1, 1);
 	ball.vX = 1;
 	ball.vY = 1;
 
 	ai.scores     = 0; // AI points
 	player.scores = 0; // Player points
+
+	//setup specific situations
+	ai.y = ai.y - 2;
+	ball.x = ball.x - 2;
 
 	play();
 	gameloop = setInterval(play, tick); // Set refresh interval
@@ -80,6 +84,7 @@ function debug() {
 }
 
 function draw() {
+	console.log('draw');
 	game.draw();
 	// Draw rackets of players
 	ai.draw();
@@ -114,45 +119,78 @@ function playerMove(e) {
 }
 
 function update() {
+	console.log('update: ' + ball.x);
+
+	// Increasing coordinates
+	ball.x += ball.vX;
+	ball.y += ball.vY;
+
 	//aiMove();
-	// --- Moving along Y-axis ---
-	if (ball.y < 1 || ball.y+ball.height > game.height - 1) {
-		// Beat with a "flooring" or "ceiling" of playing field
-		ball.vY = -ball.vY;
-	}
+
 
 	// --- Moving along X-axis ---
-	if (ball.x < 1) {
+
+	if (collision(ai, ball)) {
+		console.log('ai');
+
+		if(ball.vY > 0 && ai.y == ball.y || ball.vY < 0 && ai.y + ai.height - 1 == ball.y){
+			ball.vX = -ball.vX;
+			ball.vY = -ball.vY;
+			ball.x += ball.vX * 2;
+			ball.y += ball.vY * 2;
+		} else {
+			ball.vX = -ball.vX;
+			ball.x += ball.vX * 2;
+		}
+	} else if (ball.x < 1) { //else if for clarification PLS change
 		// Beat with a left wall
 		ball.vX = -ball.vX;
 		player.scores++;
 	}
 
-	if (ball.x+ball.width > game.width) {
+	if (collision(player, ball)) {
+		console.log('player');
+
+		if(ball.vY > 0 && player.y == ball.y || ball.vY < 0 && player.y + player.height - 1 == ball.y){
+			ball.vX = -ball.vX;
+			ball.vY = -ball.vY;
+			ball.x += ball.vX * 2;
+			ball.y += ball.vY * 2;
+		} else {
+			ball.vX = -ball.vX;
+			ball.x += ball.vX * 2;
+		}
+	} else if (ball.x + ball.width > game.width - 1) {
 		// Beat with a right wall
 		ball.vX = -ball.vX;
 		ai.scores++;
 	}
 
-	// Beat with a racket
-	if (collision(ai, ball)) {
-		console.log('ai');
-	}
-	if (collision(player, ball)) {
-		console.log('player');
-	}
-	future_ball = new rect('future_ball', ball.color, ball.x, ball.y, ball.width, ball.height);
-	future_ball.x += ball.vX;
-	future_ball.y += ball.vY;
-	if ((collision(ai, future_ball)     && ball.vX<0) ||
-		(collision(player, future_ball) && ball.vX>0)) {
-		ball.vX = -ball.vX;
-		console.log('zug' + ball.vX);
+	// --- Moving along Y-axis ---
+	if (ball.y < 1 || ball.y + ball.height > game.height - 1) {
+		// Beat with a "flooring" or "ceiling" of playing field
+		ball.vY = -ball.vY;
 	}
 
-	// Increasing coordinates
-	ball.x += ball.vX;
-	ball.y += ball.vY;
+
+	// Beat with a racket
+	/*if (collision(ai, ball)) {
+		console.log('ai');
+	}*/
+	/*if (collision(player, ball)) {
+		console.log('player');
+		ball.vX = -ball.vX;
+		ball.x += ball.vX;
+	}*/
+	//future_ball = new rect('future_ball', ball.color, ball.x, ball.y, ball.width, ball.height);
+	//future_ball.x += ball.vX;
+	//future_ball.y += ball.vY;
+	/*if ((collision(ai, ball) && ball.vX<0) ||
+		(collision(player, ball) && ball.vX>0)) {
+		ball.vX = -ball.vX;
+		console.log('zug' + ball.vX);
+	}*/
+	console.log('done: ' + ball.x);
 }
 
 function play() {
