@@ -1,21 +1,33 @@
 var socket = connectWebsocket(webSocketURL('ws'));
 
 var app = new Vue({
-    el: '#app',
+    'el': '#app',
 
-    data: {
-        debug: true,
-        leds: null,
-        games: null,
-        connected: false,
-        status: false,
-        running_game: null,
-        team: null,
+    'data': {
+        'isAdmin': false,
+        'debug': false,
+        'leds': null,
+        'games': null,
+        'connected': false,
+        'status': false,
+        'running_game': null,
+        'team': null,
+        'inputs': [],
+        'ping': 0
     },
 
     mounted: function () {
+        console.log('LED 0.1');
+        console.log(window.location.hash);
+        this.isAdmin = (window.location.hash == '#admin');
+        this.debug = this.isAdmin ? true : this.debug;
+        this.debug = (window.location.hash == '#debug') ? true : this.debug;
         this.loadData();
         setInterval(function () {
+            if (this.ping != 0 && Date.now() - this.ping > 1000) {
+                this.ping = 0;
+                socket.close();
+            }
             this.loadData();
         }.bind(this), 50);
     },
@@ -33,6 +45,14 @@ var app = new Vue({
             this.call({
                 'type': 'running_game',
                 'assign': 'running_game'
+            });
+            this.call({
+                'type': 'inputs',
+                'assign': 'inputs'
+            });
+            this.call({
+                'type': 'ping',
+                'assign': 'ping'
             });
             if (this.debug)
                 this.call({
@@ -64,6 +84,15 @@ var app = new Vue({
                 'type': 'input',
                 'event': event
             });
+        },
+        control: function(event) {
+            this.input({
+                'team': this.team,
+                'event': event
+            });
+        },
+        isInputActive: function(button) {
+            return this.inputs.indexOf(button) != -1;
         }
     }
 });
@@ -76,7 +105,7 @@ function connectWebsocket(url) {
         app.connected = true;
     };
     res.onerror = (e) => {
-        // console.log(e);
+        console.log(e);
     };
     res.onclose = (e) => {
         socket = false;
@@ -85,7 +114,7 @@ function connectWebsocket(url) {
         let data;
         try {
             data = JSON.parse(e.data);
-        } catch(e) {
+        } catch (e) {
             console.log(e);
         }
         if (data) {

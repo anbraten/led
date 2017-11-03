@@ -80,6 +80,10 @@ app.ws('/ws', (ws, req) => {
 				else
 					send(id, data.assign, null);
 				break;
+			case 'inputs':
+				if (game)
+					send(id, data.assign, game.getInputs());
+				break;
 			case 'leds':
 				let res = [];
 				for (var i = 0; i < leds.length; i++) {
@@ -90,6 +94,9 @@ app.ws('/ws', (ws, req) => {
 			case 'input':
 				if (game)
 					game.input(data.event);
+				break;
+			case 'ping':
+				send(id, data.assign, Date.now());
 				break;
 			default:
 				console.log(msg);
@@ -105,7 +112,7 @@ app.ws('/ws', (ws, req) => {
 app.listen(80);
 
 renderLEDs();
-setInterval(renderLEDs, 100);
+setInterval(renderLEDs, 50);
 
 // FUCNTIONS
 
@@ -144,7 +151,7 @@ function renderLEDs() {
 		data.push(leds[i].g);
 		data.push(leds[i].b);
 	}
-	if (serial_ready){
+	if (serial_ready) {
 		port.write(data, 'binary', (err) => {
 			if (err) {
 				return console.log('Error on write: ', err.message);

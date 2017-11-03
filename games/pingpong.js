@@ -1,41 +1,69 @@
 #!/usr/bin/env node
 
 var matrix_size = 10;
-var tick = 300;
+var tick = 200;
 var leds = [];
 
 var gameloop;
 
-// EXPORTS
-exports.name = 'Ping Pong - LED Special';
-
 var i = 0;
 var j = 0;
 
-exports.init = function init() {
+var game;
+var players = [];
+var ball;
+
+// EXPORTS
+exports = module.exports = {
+	'name':         'Ping Pong - Led Special',
+	'init': 		init,
+	'getInputs': 	getInputs,
+	'getTeams': 	getTeams,
+	'pause': 		pause,
+	'render': 		render,
+	'input': 		input,
+	'stop': 		stop
+};
+
+function init() {
 	console.log(exports.name);
 
 	// Rackets of players
-	game    = new rect('game', RGB(0, 0, 0), 0, 0, matrix_size, matrix_size);
-	ai      = new rect('ai', RGB(0, 255, 0), 0, game.height/2-1, 1, 3);
-	player  = new rect('player', RGB(0, 255, 0), game.width-1, game.height/2-1, 1, 3);
+	game    	= new rect('game', RGB(0, 0, 0), 0, 0, matrix_size, matrix_size);
+	players[0]   = new rect('player0', RGB(0, 255, 0), 0, game.height/2-1, 1, 3);
+	players[1]  	= new rect('player1', RGB(0, 255, 0), game.width-1, game.height/2-1, 1, 3);
+
 	// Ball
 	ball    = new rect('ball', RGB(255, 0, 0), game.width/2, game.height/2, 1, 1);
 	ball.vX = 1;
 	ball.vY = 1;
 
-	ai.scores     = 0; // AI points
-	player.scores = 0; // Player points
+	players[0].scores = 0; // Player 0 points
+	players[1].scores = 0; // Player 1 points
 
 	//setup specific situations
-	ai.y = ai.y - 2;
+	//player[0].y = player[0].y - 2;
 	ball.x = ball.x - 2;
 
 	play();
 	gameloop = setInterval(play, tick); // Set refresh interval
 }
 
-exports.pause = function pause() {
+function getInputs() {
+	return [
+		'left',
+		'right'
+	];
+}
+
+function getTeams() {
+	return {
+		'0': 'A',
+		'1': 'B'
+	};
+}
+
+function pause() {
 	if (gameloop) {
 		clearInterval(gameloop);
 		gameloop = false;
@@ -44,24 +72,20 @@ exports.pause = function pause() {
 	gameloop = setInterval(play, tick);
 }
 
-exports.render = function render() {
+function render() {
 	return leds;
 }
 
-exports.input = function input(input) {
-	//var stdin = process.openStdin();
-	//
-	//stdin.on('data', function (data) {
-	//	if (data == 'p') pause();
-	//	if (data == 'd') debug();
-	//	if (data == 'c') process.stdout.write('\x1Bc');
-	//	if (data == '\u000D' && !gameloop) play();
-	//	if (data == '\u0003') process.exit();
-	//});
-	//stdin.setEncoding('utf8');
-	//stdin.setRawMode(true);
-	//stdin.resume();
-	switch (input) {
+function input(input) {
+	input = (input instanceof Object) ? input : {'event': input};
+	var team = (input['team'] == 'A') ? 0 : 1;
+	switch (input['event']) {
+		case 'left':
+			playerMove(team, input['event']);
+			break;
+		case 'right':
+			playerMove(team, input['event']);
+			break;
 		case 'step':
 			exports.stop();
 			play();
@@ -71,24 +95,23 @@ exports.input = function input(input) {
 	}
 }
 
-exports.stop = function stop() {
+function stop() {
 	clearInterval(gameloop);
 	gameloop = false;
 }
 
 function debug() {
 	console.log(game);
-	console.log(ai);
-	console.log(player);
+	console.log(players[0]);
+	console.log(players[1]);
 	console.log(ball);
 }
 
 function draw() {
-	console.log('draw');
 	game.draw();
 	// Draw rackets of players
-	ai.draw();
-	player.draw();
+	players[0].draw();
+	players[1].draw();
 	// Draw ball
 	ball.draw();
 }
@@ -111,29 +134,28 @@ function rect(name, color, x, y, width, height) {
 	}
 }
 
-function playerMove(e) {
-	var y = e.pageY;
-	if (player.height/2 + 10 < y && y < game.height - player.height/2 - 10) {
-		player.y = y - player.height/2;
+function playerMove(team, e) {
+	var vY = (e == 'left') ? -1 : 1;
+	var yStart = players[team].y + vY;
+	var yEnd = yStart + players[team].height;
+	if (0 <= yStart && game.height >= yEnd) {
+		players[team].y += vY;
 	}
 }
 
 function update() {
-	console.log('update: ' + ball.x);
+	//aiMove();
 
 	// Increasing coordinates
 	ball.x += ball.vX;
 	ball.y += ball.vY;
 
-	//aiMove();
-
-
 	// --- Moving along X-axis ---
 
-	if (collision(ai, ball)) {
-		console.log('ai');
+	if (collision(players[0], ball)) {
+		// console.log('players[0]');
 
-		if(ball.vY > 0 && ai.y == ball.y || ball.vY < 0 && ai.y + ai.height - 1 == ball.y){
+		if(ball.vY > 0 && players[0].y == ball.y || ball.vY < 0 && players[0].y + players[0].height - 1 == ball.y){
 			ball.vX = -ball.vX;
 			ball.vY = -ball.vY;
 			ball.x += ball.vX * 2;
@@ -145,13 +167,13 @@ function update() {
 	} else if (ball.x < 1) { //else if for clarification PLS change
 		// Beat with a left wall
 		ball.vX = -ball.vX;
-		player.scores++;
+		players[1].scores++;
 	}
 
-	if (collision(player, ball)) {
-		console.log('player');
+	if (collision(players[1], ball)) {
+		// console.log('player');
 
-		if(ball.vY > 0 && player.y == ball.y || ball.vY < 0 && player.y + player.height - 1 == ball.y){
+		if(ball.vY > 0 && players[1].y == ball.y || ball.vY < 0 && players[1].y + players[1].height - 1 == ball.y){
 			ball.vX = -ball.vX;
 			ball.vY = -ball.vY;
 			ball.x += ball.vX * 2;
@@ -163,7 +185,7 @@ function update() {
 	} else if (ball.x + ball.width > game.width - 1) {
 		// Beat with a right wall
 		ball.vX = -ball.vX;
-		ai.scores++;
+		players[0].scores++;
 	}
 
 	// --- Moving along Y-axis ---
@@ -190,7 +212,6 @@ function update() {
 		ball.vX = -ball.vX;
 		console.log('zug' + ball.vX);
 	}*/
-	console.log('done: ' + ball.x);
 }
 
 function play() {

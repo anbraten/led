@@ -19,15 +19,25 @@ body {
 #controls {
 	display: flex;
 }
+#controls div {
+	margin: 0 auto;
+}
 #controls .active{
 	text-align: center;
 }
-#controls .active .up {
-	width: 100%;
+#controls .active button {
+	width: 75px;
+	height: 75px;
+}
+#controls .active .row {
 	margin-bottom: 1rem;
 }
-#controls .active .up button{
+#debug {
+	width: 100%;
+}
+#debug .leds{
 	margin: 0 auto;
+	margin-bottom: 10rem;
 }
 @media (min-width: 768px) {
 	body {

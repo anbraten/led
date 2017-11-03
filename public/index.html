@@ -31,10 +31,12 @@
 						<a class="nav-link" href="#">{{ running_game }}<span class="sr-only">(current)</span></a>
 					</li>
 				</ul>
+				<div v-if="team" class="">
+					<button type="button" v-on:click="team=null" class="btn btn-secondary">Leave Team</button>
+				</div>
 				<div class="">
-					<button v-if="running_game" type="button" v-on:click="stopGame()" class="btn btn-secondary"><i class="fa fa-stop" aria-hidden="true"></i></button>
+					<button v-if="isAdmin && running_game" type="button" v-on:click="stopGame()" class="btn btn-secondary"><i class="fa fa-stop" aria-hidden="true"></i></button>
 					<span v-if="!connected" class="badge badge-pill badge-danger">OFFLINE</span>
-					<span v-else-if="status" class="badge badge-pill badge-success">Serial CONNECTED</span>
 					<span v-else-if="status" class="badge badge-pill badge-success">Serial CONNECTED</span>
 					<span v-else class="badge badge-pill badge-danger">Serial DISCONNECTED</span>
 				</div>
@@ -51,35 +53,52 @@
 				</thead>
 				<tr v-for="game in games">
 					<td>{{ game }}</td>
-					<td><button type="button" v-on:click="launchGame(game)" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button></td>
+					<td><button v-if="isAdmin" v-on:click="launchGame(game)" type="button" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button></td>
 				</tr>
 			</table>
-			<div v-else id="controls">
-				<div v-if="debug" class="leds">
+			<div id="debug">
+				<div v-if="debug && running_game" class="leds">
 					<div v-for="led in leds" v-bind:style="{ background: rgb(led) }" class="led"></div>
 				</div>
+			</div>
+			<div v-if="running_game" id="controls" class="text-center">
 				<div v-if="team" class="active">
-					<div class="row up">
-						<button type="button" v-on:click="control('up')" class="btn btn-secondary"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+					<div class="row">
+						<div class="col">
+							<button v-if="isInputActive('a')" type="button" v-on:click="control('a')" class="btn btn-secondary">A</button>
+						</div>
+						<div class="col">
+							<button v-if="isInputActive('up')" type="button" v-on:click="control('up')" class="btn btn-secondary"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+						</div>
+						<div class="col">
+							<button v-if="isInputActive('b')" type="button" v-on:click="control('b')" class="btn btn-secondary">B</button>
+						</div>
 					</div>
 					<div class="row">
-						<button type="button" v-on:click="control('left')" class="btn btn-secondary"><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
-						<button type="button" v-on:click="control('down')" class="btn btn-secondary"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
-						<button type="button" v-on:click="control('right')" class="btn btn-secondary"><i class="fa fa-arrow-right" aria-hidden="true"></i></button>
+						<div class="col">
+							<button v-if="isInputActive('left')" type="button" v-on:click="control('left')" class="btn btn-secondary"><i class="fa fa-arrow-left" aria-hidden="true"></i></button>
+						</div>
+						<div class="col">
+							<button v-if="isInputActive('down')" type="button" v-on:click="control('down')" class="btn btn-secondary"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+						</div>
+						<div class="col">
+							<button v-if="isInputActive('right')" type="button" v-on:click="control('right')" class="btn btn-secondary"><i class="fa fa-arrow-right" aria-hidden="true"></i></button>
+						</div>
 					</div>
 					<div v-if="debug">
-						<button type="button" v-on:click="input('step')" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button>
+						<button type="button" v-on:click="control('step')" class="btn btn-secondary"><i class="fa fa-play" aria-hidden="true"></i></button>
 					</div>
 				</div>
 				<div v-else class="team_selection">
-					<button type="button" v-on:click="team=1" class="btn btn-secondary">Team A</button>
-					<button type="button" v-on:click="team=2" class="btn btn-secondary">Team B</button>
+					<button type="button" v-on:click="team='A'" class="btn btn-secondary">Team A</button>
+					<button type="button" v-on:click="team='B'" class="btn btn-secondary">Team B</button>
 				</div>
 			</div>
 		</div><!-- /.container -->
 	</div>
 
 	<script src="https://unpkg.com/vue"></script>
+	<script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
 	<script src="scripts/app.js" async></script>
 </body>
 </html>
