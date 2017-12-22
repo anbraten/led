@@ -4,19 +4,20 @@ var app = new Vue({
     'el': '#app',
 
     'data': {
+        'loaded': false,
         'isAdmin': false,
         'debug': false,
         'leds': null,
-        'games': null,
+        'scripts': null,
         'connected': false,
         'status': false,
-        'running_game': null,
+        'running_script': null,
         'team': null,
         'inputs': [],
-        'ping': 0
     },
 
     mounted: function () {
+        this.loaded = true;
         console.log('LED 0.1');
         console.log(window.location.hash);
         this.isAdmin = (window.location.hash == '#admin');
@@ -24,10 +25,6 @@ var app = new Vue({
         this.debug = (window.location.hash == '#debug') ? true : this.debug;
         this.loadData();
         setInterval(function () {
-            if (this.ping != 0 && Date.now() - this.ping > 1000) {
-                this.ping = 0;
-                socket.close();
-            }
             this.loadData();
         }.bind(this), 50);
     },
@@ -35,24 +32,20 @@ var app = new Vue({
     methods: {
         loadData: function () {
             this.call({
-                'type': 'list_games',
-                'assign': 'games'
+                'type': 'list_scripts',
+                'assign': 'scripts'
             });
             this.call({
                 'type': 'status',
                 'assign': 'status'
             });
             this.call({
-                'type': 'running_game',
-                'assign': 'running_game'
+                'type': 'running_script',
+                'assign': 'running_script'
             });
             this.call({
                 'type': 'inputs',
                 'assign': 'inputs'
-            });
-            this.call({
-                'type': 'ping',
-                'assign': 'ping'
             });
             if (this.debug)
                 this.call({
@@ -65,15 +58,15 @@ var app = new Vue({
                 socket.send(JSON.stringify(data));
             }
         },
-        launchGame: function (game) {
+        launchScript: function (script) {
             this.call({
-                'type': 'launch_game',
-                'game': game
+                'type': 'launch_script',
+                'script': script
             });
         },
-        stopGame: function () {
+        stopScript: function () {
             this.call({
-                'type': 'stop_game'
+                'type': 'stop_script'
             });
         },
         rgb: function (led) {
