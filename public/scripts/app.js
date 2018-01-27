@@ -1,131 +1,169 @@
-var socket = connectWebsocket(webSocketURL('ws'));
+var socket
 
+// eslint-disable-next-line
 var app = new Vue({
-    'el': '#app',
+  'el': '#app',
 
-    'data': {
-        'loaded': false,
-        'isAdmin': false,
-        'debug': false,
-        'leds': null,
-        'scripts': null,
-        'connected': false,
-        'status': false,
-        'running_script': null,
-        'team': null,
-        'inputs': [],
+  'data': {
+    'loaded': false,
+    'view': 'scripts',
+    'showAuth': false,
+    'showControls': false,
+    'connected': false,
+    'debug': false,
+
+    'auth': false,
+    'status': false,
+    'scripts': null,
+    'script': null,
+    'leds': [],
+    'inputs': [],
+    'logs': []
+  },
+
+  created: function () {
+    this.loaded = true
+    this.log('LED 0.2')
+  },
+
+  methods: {
+    init: function () {
     },
-
-    mounted: function () {
-        this.loaded = true;
-        console.log('LED 0.1');
-        console.log(window.location.hash);
-        this.isAdmin = (window.location.hash == '#admin');
-        this.debug = this.isAdmin ? true : this.debug;
-        this.debug = (window.location.hash == '#debug') ? true : this.debug;
-        this.loadData();
-        setInterval(function () {
-            this.loadData();
-        }.bind(this), 50);
+    send: function (data) {
+      if (socket && socket.readyState === socket.OPEN) {
+        socket.send(JSON.stringify(data))
+      }
     },
-
-    methods: {
-        loadData: function () {
-            this.call({
-                'type': 'list_scripts',
-                'assign': 'scripts'
-            });
-            this.call({
-                'type': 'status',
-                'assign': 'status'
-            });
-            this.call({
-                'type': 'running_script',
-                'assign': 'running_script'
-            });
-            this.call({
-                'type': 'inputs',
-                'assign': 'inputs'
-            });
-            if (this.debug)
-                this.call({
-                    'type': 'leds',
-                    'assign': 'leds'
-                });
-        },
-        call: function (data) {
-            if (socket && socket.readyState === socket.OPEN) {
-                socket.send(JSON.stringify(data));
-            }
-        },
-        launchScript: function (script) {
-            this.call({
-                'type': 'launch_script',
-                'script': script
-            });
-        },
-        stopScript: function () {
-            this.call({
-                'type': 'stop_script'
-            });
-        },
-        rgb: function (led) {
-            return 'rgb(' + led.r + ',' + led.g + ',' + led.b + ')';
-        },
-        input: function(event) {
-            this.call({
-                'type': 'input',
-                'event': event
-            });
-        },
-        control: function(event) {
-            this.input({
-                'team': this.team,
-                'event': event
-            });
-        },
-        isInputActive: function(button) {
-            return this.inputs.indexOf(button) != -1;
-        }
+    launchScript: function (script) {
+      this.send({
+        'type': 'launch_script',
+        'script': script
+      })
+    },
+    stopScript: function () {
+      this.send({
+        'type': 'stop_script'
+      })
+    },
+    led: function (id, rgb) {
+      if (this.leds.length === 100) {
+        this.$set(this.leds, id, rgb)
+      }
+    },
+    rgb: function (led) {
+      return 'rgb(' + led.r + ',' + led.g + ',' + led.b + ')'
+    },
+    input: function (event) {
+      this.send({
+        'type': 'input',
+        'event': event
+      })
+    },
+    control: function (event) {
+      this.input({
+        'event': event
+      })
+    },
+    isInputActive: function (button) {
+      return this.inputs.indexOf(button) !== -1
+    },
+    log: function (data) {
+      this.logs.push({
+        'time': new Date(),
+        'message': data
+      })
+    },
+    login: function () {
+      var password = this.$refs.password.value
+      this.send({
+        'type': 'login',
+        'password': password
+      })
+    },
+    logout: function () {
+      this.send({
+        'type': 'logout'
+      })
     }
-});
+  }
+})
 
-function connectWebsocket(url) {
-    var res = new WebSocket(url);
+socket = connectWebsocket('ws://localhost:8080')
+// socket = connectWebsocket('wss://led.ju60.de/ws')
 
-    res.onopen = (e) => {
-        console.log('WebSocket connected');
-        app.connected = true;
-    };
-    res.onerror = (e) => {
-        console.log(e);
-    };
-    res.onclose = (e) => {
-        socket = false;
-    };
-    res.onmessage = (e) => {
-        let data;
-        try {
-            data = JSON.parse(e.data);
-        } catch (e) {
-            console.log(e);
-        }
-        if (data) {
-            app[data.assign] = data.content;
-        }
-    };
-    res.onclose = (e) => {
-        console.log('Websocket disconnected');
-        app.connected = false;
-        setTimeout(() => {
-            console.log('Websocket reconnecting ...');
-            socket = connectWebsocket(url);
-        }, 1000);
-    };
-    return res;
+function connectWebsocket (url) {
+  app.init()
+  var res = new WebSocket(url)
+
+  res.onopen = (e) => {
+    app.log('WebSocket: connected')
+    app.connected = true
+    app.auth = false
+  }
+  res.onerror = (e) => {
+  }
+  res.onmessage = (e) => {
+    parseWebSocket(e.data)
+  }
+  res.onclose = (e) => {
+    app.log('WebSocket: disconnected')
+    app.connected = false
+    setTimeout(() => {
+      socket = connectWebsocket(url)
+    }, 1000)
+  }
+  return res
 }
 
-function webSocketURL(s) {
-    var l = window.location;
-    return ((l.protocol === "https:") ? "wss://" : "ws://") + l.hostname + (((l.port != 80) && (l.port != 443)) ? ":" + l.port : "") + l.pathname + s;
+function parseWebSocket (raw) {
+  let data
+  try {
+    data = JSON.parse(raw)
+  } catch (e) {
+    return
+  }
+  if (data) {
+    switch (data.type) {
+      case 'status':
+        app.status = data.status
+        break
+      case 'script':
+        app.script = data.script
+        if (data.script === null) {
+          app.leds = []
+          app.log('Script: stopped')
+          app.showControls = false
+        } else {
+          for (let i = 0; i < 100; i++) {
+            app.leds[i] = {
+              'r': 0,
+              'g': 0,
+              'b': 0
+            }
+          }
+          app.log('Script: started [' + data.script + ']')
+          app.showControls = true
+        }
+        break
+      case 'scripts':
+        app.scripts = data.scripts
+        break
+      case 'auth':
+        if (data.auth) {
+          app.log('Auth: logged in')
+        } else {
+          app.leds = []
+          app.log('Auth: logged out')
+        }
+        app.showAuth = false
+        app.auth = data.auth
+        break
+      case 'log':
+        app.log(data.log)
+        break
+      case 'led':
+        app.led(data.id, data.rgb)
+        break
+    }
+  }
 }

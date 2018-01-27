@@ -1,11 +1,14 @@
 {
 	"name": "LED-Matrix",
-	"description": "Fast, unopinionated, minimalist web framework",
-	"version": "0.0.1",
+	"description": "Led-Matrix interface",
+	"version": "0.0.2",
 	"author": "Anton Bracke",
 	"dependencies": {
+		"mqtt": "^2.15.1",
 		"express": "^4.16.2",
-		"express-ws": "^3.0.0",
-		"serialport": "^5.0.0"
+		"ws": "^4.0.0"
+	},
+	"devDependencies": {
+		"standard": "*"
 	}
 }

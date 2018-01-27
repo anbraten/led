@@ -1,213 +1,287 @@
 #!/usr/bin/env node
 
-const SerialPort = require('serialport');
-const express = require('express');
-const app = express();
-const expressWs = require('express-ws')(app);
-const fs = require('fs');
+'use strict'
 
-var serial_ready = false;
-var clients = [];
-var connected_clients = 0;
+// //////////////////////////////////////////////////////
+// constant
+// //////////////////////////////////////////////////////
+const mqtt = require('mqtt')
+const express = require('express')
+const web = express()
+const WebSocket = require('ws')
+const fs = require('fs')
+const path = require('path')
+const Matrix = require('./inc/matrix')
+const config = require('./config')[process.env.NODE_ENV === 'production' ? 'production' : 'development']
 
-//var auto_lunch = 'pingpong.js';
-var auto_lunch = null;
+// //////////////////////////////////////////////////////
+// variables
+// //////////////////////////////////////////////////////
+var clients = []
+var connectedClients = 0
+var script
+var mqttClient
+var wss
 
-var script;
-var leds;
+// //////////////////////////////////////////////////////
+// main script
+// //////////////////////////////////////////////////////
+init()
 
-var port = new SerialPort('/dev/ttyUSB0', {
-	baudRate: 115200,
-	autoOpen: false
-});
+// //////////////////////////////////////////////////////
+// core functions
+// //////////////////////////////////////////////////////
+function init () {
+  // Matrix
+  Matrix.init(config.matrix.size)
+  Matrix.on('broadcast', broadcastLed)
 
-console.log('LED Server 0.1');
+  // MQTT
+  mqttClient = mqtt.connect('mqtt://' + config.mqtt.server + ':' + config.mqtt.port, {
+    username: config.mqtt.user,
+    password: config.mqtt.password
+  })
+  mqttClient.on('connect', () => {
+    console.log('mqtt: connected')
+    Matrix.connected = true
+  })
 
-// SERIAL
-port.on('open', () => {
-	port.on('data', (data) => {
-		if(data == 'ready'){
-			console.log('serial connected');
-			serial_ready = true;
-			if (auto_lunch)
-				launch_script(auto_lunch);
-		}
-	});
-});
+  // Express (static web files)
+  web.use(express.static(path.join(__dirname, config.web.root)))
+  web.listen(config.web.port)
 
-port.on('close', () => {
-	console.log('serial closed');
-	serial_ready = false;
-	connect_serial();
-});
+  // WebSocket
+  wss = new WebSocket.Server({ port: config.web.websocket.port })
+  wss.on('connection', (ws) => {
+    let id = connectedClients
+    startWebSocket(id, ws)
 
-// open errors will be emitted as an error event
-port.on('error', (err) => {
-	console.log('Error: ', err.message);
-});
+    ws.on('message', (msg) => {
+      parseWebSocket(id, ws, msg)
+    })
+    ws.on('close', (code, reason) => {
+      closeWebSocket(id, ws)
+    })
+    ws.on('error', (e) => {
+      ws.terminate()
+    })
+    ws.on('pong', () => {
+      ws.isAlive = true
+    })
+  })
 
-connect_serial();
+  // WebSocket keep a live pings
+  setInterval(() => {
+    wss.clients.forEach(function each (ws) {
+      if (ws.isAlive === false) return ws.terminate()
+      ws.isAlive = false
+      ws.ping(() => {})
+    })
+  }, 30000)
 
-// EXPRESS
+  console.log('LED Server 0.2')
 
-app.use(express.static(__dirname + '/public'));
-app.ws('/ws', (ws, req) => {
-	var id = connected_clients;
-	clients[id] = ws;
-	connected_clients++;
-	ws.on('message', (msg) => {
-		let data;
-		try {
-			data = JSON.parse(msg);
-		} catch(e) {
-		}
-		switch(data.type) {
-			case 'status':
-				send(id, data.assign, serial_ready);
-				break;
-			case 'list_scripts':
-				list_scripts(id, data.assign);
-				break;
-			case 'launch_script':
-				launch_script(data.script);
-				break;
-			case 'stop_script':
-				stop_script();
-				break;
-			case 'running_script':
-				if (script)
-					send(id, data.assign, script.id);
-				else
-					send(id, data.assign, null);
-				break;
-			case 'inputs':
-				if (script)
-					send(id, data.assign, script.getInputs());
-				break;
-			case 'leds':
-				let res = [];
-				for (var i = 0; i < leds.length; i++) {
-					res[LED(i)] = leds[i];
-				}
-				send(id, data.assign, res);
-				break;
-			case 'input':
-				if (script)
-					script.input(data.event);
-				break;
-			case 'ping':
-				send(id, data.assign, Date.now());
-				break;
-			default:
-				console.log(msg);
-				break;
-		}
-	});
-	ws.on('close', () => {
-		delete clients[id];
-		connected_clients--;
-	});
-});
-
-app.listen(80);
-
-renderLEDs();
-setInterval(renderLEDs, 50);
-
-// FUCNTIONS
-
-function list_scripts(client_id, assign) {
-	let dir = __dirname + '/scripts';
-	fs.readdir(dir, function (err, files) {
-		send(client_id, assign, files);
-	});
+  if (config.scripts.autoStart) {
+    launchScript(config.scripts.autoStart)
+  }
 }
 
-// pingpong, space invaders, snake, tetris, car race
-function launch_script(script_name) {
-	if (script)
-		stop_script();
-	script = require(__dirname + '/scripts/' + script_name);
-	script.id = script_name;
-	script.init();
+function broadcastLed (id, rgb) {
+  wss.clients.forEach(function each (ws) {
+    if (ws.authenticated) {
+      sendWebSocket(ws, {
+        'type': 'led',
+        'id': id,
+        'rgb': rgb
+      })
+    }
+  })
+  if (Matrix.connected) {
+    let x = id % Matrix.size
+    let y = Math.floor(id / Matrix.size)
+    if (y % 2 === 0) {
+      x = Matrix.size - x - 1
+    }
+    mqttClient.publish(config.mqtt.topic, (x * Matrix.size + y) + ':' + Matrix.RGB_TO_STRING(rgb))
+  }
 }
 
-function stop_script() {
-	if (script) {
-		script.stop();
-		delete require.cache[__dirname + '/scripts/' + script.id];
-		script = null;
-	}
+// //////////////////////////////////////////////////////
+// WebSocket functions
+// //////////////////////////////////////////////////////
+function startWebSocket (id, ws) {
+  console.log('WebSocket: new connection')
+  clients[id] = ws
+  ws.authenticated = false
+  connectedClients++
+
+  sendWebSocket(ws, {
+    'type': 'status',
+    'status': Matrix.connected
+  })
+  sendWebSocket(ws, {
+    'type': 'script',
+    'script': script === null ? null : script.id
+  })
+  if (script) {
+    // TODO: send script info, inputs, ...
+  } else {
+    listScripts((files) => {
+      sendWebSocket(ws, {
+        'type': 'scripts',
+        'scripts': files
+      })
+    })
+  }
+  if (config.auth.autoLogin) {
+    authWebsocket(ws, true)
+  }
 }
 
-function renderLEDs() {
-	if (script)
-		leds = script.render();
-	else
-		leds = Matrix(100, RGB(0, 0, 0));
-	var data = [];
-	for (var i = 0; i < leds.length; i++) {
-		data.push(leds[i].r);
-		data.push(leds[i].g);
-		data.push(leds[i].b);
-	}
-	if (serial_ready) {
-		port.write(data, 'binary', (err) => {
-			if (err) {
-				return console.log('Error on write: ', err.message);
-			}
-		});
-	}
+function closeWebSocket (id, ws) {
+  ws.terminate()
+  delete clients[id]
+  connectedClients--
+  console.log('WebSocket: connection closed')
 }
 
-// HELPERS
+function parseWebSocket (id, ws, msg) {
+  let data
+  try {
+    data = JSON.parse(msg)
+  } catch (e) {
+  }
 
-function send(client_id, assign, data) {
-	if(client_id in clients) {
-		let client = clients[client_id];
-		if (client.readyState !== client.OPEN)
-			return;
-		data = {
-			'type': 'result',
-			'assign': assign,
-			'content': data
-		};
-		client.send(JSON.stringify(data));
-	}
+  if (ws.authenticated === true) {
+    switch (data.type) {
+      case 'logout':
+        authWebsocket(ws, false)
+        return
+      case 'launch_script':
+        launchScript(data.script)
+        return
+      case 'stop_script':
+        stopScript()
+        return
+    }
+  }
+
+  switch (data.type) {
+    case 'login':
+      if (data.password === config.auth.password || config.auth.password === null) {
+        authWebsocket(ws, true)
+      } else {
+        // TODO: auth failed
+      }
+      break
+    case 'authenticated':
+      sendWebSocket(ws, {
+        'type': 'authenticated',
+        'auth': ws.authenticated
+      })
+      break
+    case 'input':
+      if (script) {
+        script.input(data.event)
+      }
+      break
+    default:
+      console.log('< ' + msg)
+      break
+  }
 }
 
-function connect_serial() {
-	port.open((err) => {
-		if (err)
-			setTimeout(connect_serial, 1000);
-	});
+function sendWebSocket (ws, data) {
+  if (ws.readyState === ws.OPEN) {
+    var raw = JSON.stringify(data)
+    ws.send(raw)
+  }
 }
 
-function LED(id) {
-	let matrix_size = 10;
-	x = id % matrix_size;
-	y = Math.floor(id / matrix_size);
-	//console.log();
-	//console.log(x + ' : ' + y);
-	if (y % 2 == 0)
-		x = matrix_size - x - 1;
-	//console.log(x + ' : ' + y);
-	return x * matrix_size + y;
+function authWebsocket (ws, auth) {
+  ws.authenticated = auth
+  sendWebSocket(ws, {
+    'type': 'auth',
+    'auth': ws.authenticated
+  })
+  // send all leds
+  if (ws.authenticated && script) {
+    let leds = Matrix.toArray()
+    for (let i = 0; i < leds.length; i++) {
+      broadcastWebSocket({
+        'type': 'led',
+        'id': i,
+        'rgb': leds[i]
+      })
+    }
+  }
 }
 
-function Matrix(size, rgb) {
-	var result = [];
-	for (var i = 0; i < size; i++) {
-		result[i] = rgb;
-	}
-	return result;
+/*
+function sendWebSocketID (id, data) {
+  if (id in clients) {
+    return sendWebSocket(clients[id], data)
+  }
+}
+*/
+
+function broadcastWebSocket (data) {
+  wss.clients.forEach(function each (ws) {
+    sendWebSocket(ws, data)
+  })
 }
 
-function RGB(r, g, b) {
-	return {
-		'r': r,
-		'g': g,
-		'b': b
-	};
+// //////////////////////////////////////////////////////
+// Script functions
+// //////////////////////////////////////////////////////
+
+function listScripts (cb) {
+  let dir = path.join(__dirname, config.scripts.path)
+  fs.readdir(dir, function (e, files) {
+    if (e) {
+      console.error(e)
+    }
+    cb(files)
+  })
 }
 
+function launchScript (scriptName) {
+  if (script) {
+    stopScript()
+  }
+  try {
+    script = require(path.join(__dirname, config.scripts.path, scriptName))
+    script.id = scriptName
+    script.init(Matrix)
+    Matrix.start()
+    broadcastWebSocket({
+      'type': 'script',
+      'script': script.id
+    })
+  } catch (e) {
+    console.error(e)
+    broadcastWebSocket({
+      'type': 'log',
+      'log': 'Error loading script: ' + e
+    })
+  }
+}
+
+function stopScript () {
+  if (script) {
+    let id = script.id
+    Matrix.stop()
+    script = null
+    delete require.cache[path.join(__dirname, config.scripts.path, id)]
+    broadcastWebSocket({
+      'type': 'script',
+      'script': null
+    })
+    listScripts((files) => {
+      broadcastWebSocket({
+        'type': 'scripts',
+        'scripts': files
+      })
+    })
+  }
+}

@@ -1,0 +1,10 @@
+#! /bin/bash
+DIR="/opt/led"
+docker run -ti \
+	--rm \
+	--net ju60 \
+	-v $DIR/:/home/node/app \
+	-w="/home/node/app" \
+	node:8 \
+	npm start
+#	bash -c "npm install && npm start"
