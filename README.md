@@ -1,4 +1,4 @@
-# led
+# Led
 This program written in node is a webinterface for controlling small scripts which renders a led matrix.
 
 ## Issues
@@ -15,7 +15,8 @@ A script is a small program / game that renders the led matrix. It can handle us
 
 ### Example
 
-`var Matrix
+```
+var Matrix
 
 // EXPORTS
 exports = module.exports = {
@@ -44,10 +45,25 @@ function init (_matrix) {
   Matrix.on('draw', () => {
     // exectued when your script should render leds
   })
-}`
+}
+```
 
 ### Matrix API
 Use this api to set leds, get user input and run your logic.
+
+* [Matrix.on(event, callback)](#on)
+* [Matrix.size](#size)
+* [Matrix.setTick(speed)](#setTick)
+* [Matrix.led(x, y, rgb)](#led)
+* [Matrix.ledXY(x, y, rgb)](#ledXY)
+* [Matrix.fill()](#fill)
+* [Matrix.clear()](#clear)
+* [new Matrix.Drops(chance, multiple, rgb)](#Drops)
+* [new Matrix.Rect(name, rgb, x, y, width, height)](#Rect)
+* [Matrix.RGB(r, g, b)](#rgb)
+* [Matrix.HSV_TO_RGB(h, s, v)](#hsvToRgb)
+* [Matrix.RND(min, max)](#rnd)
+* [Matrix.RND_COLOR()](#rndColor)
 
 -------------------------------------------------------
 <a name="on"></a>
@@ -104,6 +120,7 @@ Emitted when the matrix loop calls your script to render.
 Emitted when a user sends input via the webinterface.
 
 -------------------------------------------------------
+<a name="size"></a>
 ### Matrix.size
 
 Int : Size of the matrix.
@@ -198,7 +215,7 @@ Matrix.RGB(255, 255, 255) is white.
 * `b` The blue porpotion of the color. (0 is nothing, 255 is max)
 
 -------------------------------------------------------
-<a name="hasToRgb"></a>
+<a name="hsvToRgb"></a>
 ### Matrix.HSV_TO_RGB(h, s, v)
 
 Converts a hsv color to a [Matrix.RGB(r, g, b)](#rgb) color object.
@@ -217,7 +234,7 @@ Returns a random integer.
 * `max` Maximum of the possible random range.
 
 -------------------------------------------------------
-<a name="hasToRgb"></a>
+<a name="rndColor"></a>
 ### Matrix.RND_COLOR()
 
 Returns a random [Matrix.RGB(r, g, b)](#rgb) color object.
