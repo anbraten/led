@@ -34,7 +34,8 @@ init()
 function init () {
   // Matrix
   Matrix.init(config.matrix.size)
-  Matrix.on('broadcast', broadcastLed)
+  Matrix.onSystem('broadcastLed', broadcastLed)
+  Matrix.onSystem('showLeds', showLeds)
 
   // MQTT
   mqttClient = mqtt.connect('mqtt://' + config.mqtt.server + ':' + config.mqtt.port, {
@@ -44,6 +45,10 @@ function init () {
   mqttClient.on('connect', () => {
     console.log('mqtt: connected')
     Matrix.connected = true
+    mqttClient.publish(config.mqtt.topic, 'clear')
+    if (config.scripts.autoStart) {
+      launchScript(config.scripts.autoStart)
+    }
   })
 
   // Express (static web files)
@@ -80,10 +85,8 @@ function init () {
   }, 30000)
 
   console.log('LED Server 0.2')
-
-  if (config.scripts.autoStart) {
-    launchScript(config.scripts.autoStart)
-  }
+  console.log('Webinterface: port ' + config.web.websocket.port)
+  console.log('Websocket: port ' + config.web.port)
 }
 
 function broadcastLed (id, rgb) {
@@ -97,12 +100,20 @@ function broadcastLed (id, rgb) {
     }
   })
   if (Matrix.connected) {
-    let x = id % Matrix.size
-    let y = Math.floor(id / Matrix.size)
+    let x = Math.floor(id / Matrix.size)
+    let y = id % Matrix.size
     if (y % 2 === 0) {
       x = Matrix.size - x - 1
     }
-    mqttClient.publish(config.mqtt.topic, (x * Matrix.size + y) + ':' + Matrix.RGB_TO_STRING(rgb))
+    id = (y * Matrix.size + x)
+    id = id < 10 ? '00' + id : (id < 100) ? '0' + id : id
+    mqttClient.publish(config.mqtt.topic, id + ':' + Matrix.RGB_TO_STRING(rgb))
+  }
+}
+
+function showLeds () {
+  if (Matrix.connected) {
+    mqttClient.publish(config.mqtt.topic, 'show')
   }
 }
 
@@ -121,7 +132,7 @@ function startWebSocket (id, ws) {
   })
   sendWebSocket(ws, {
     'type': 'script',
-    'script': script === null ? null : script.id
+    'script': script ? script.id : null
   })
   if (script) {
     // TODO: send script info, inputs, ...
@@ -273,6 +284,7 @@ function stopScript () {
     Matrix.stop()
     script = null
     delete require.cache[path.join(__dirname, config.scripts.path, id)]
+    // TODO: unregister event listeners correctly
     broadcastWebSocket({
       'type': 'script',
       'script': null

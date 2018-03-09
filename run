@@ -3,8 +3,8 @@ DIR="/opt/led"
 docker run -td \
 	--name led \
 	--restart always \
-	--net ju60 \
 	-v $DIR/:/home/node/app \
+  -e="NODE_ENV=production" \
 	-w="/home/node/app" \
 	node:8 \
 	bash -c "npm install && npm start"

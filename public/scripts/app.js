@@ -23,6 +23,13 @@ var app = new Vue({
 
   created: function () {
     this.loaded = true
+    for (let i = 0; i < 100; i++) {
+      this.leds[i] = {
+        'r': 0,
+        'g': 0,
+        'b': 0
+      }
+    }
     this.log('LED 0.2')
   },
 
@@ -75,6 +82,7 @@ var app = new Vue({
     },
     login: function () {
       var password = this.$refs.password.value
+      document.cookie = 'auth=' + password + ';path=/;'
       this.send({
         'type': 'login',
         'password': password
@@ -88,8 +96,8 @@ var app = new Vue({
   }
 })
 
-socket = connectWebsocket('ws://localhost:8080')
-// socket = connectWebsocket('wss://led.ju60.de/ws')
+// socket = connectWebsocket('ws://localhost:8080')
+socket = connectWebsocket('wss://led.ju60.de/ws')
 
 function connectWebsocket (url) {
   app.init()
@@ -99,6 +107,14 @@ function connectWebsocket (url) {
     app.log('WebSocket: connected')
     app.connected = true
     app.auth = false
+    // autlogin user with cookie
+    var password = getCookie('auth')
+    if (password) {
+      app.send({
+        'type': 'login',
+        'password': password
+      })
+    }
   }
   res.onerror = (e) => {
   }
@@ -130,17 +146,9 @@ function parseWebSocket (raw) {
       case 'script':
         app.script = data.script
         if (data.script === null) {
-          app.leds = []
           app.log('Script: stopped')
           app.showControls = false
         } else {
-          for (let i = 0; i < 100; i++) {
-            app.leds[i] = {
-              'r': 0,
-              'g': 0,
-              'b': 0
-            }
-          }
           app.log('Script: started [' + data.script + ']')
           app.showControls = true
         }
@@ -153,6 +161,7 @@ function parseWebSocket (raw) {
           app.log('Auth: logged in')
         } else {
           app.leds = []
+          document.cookie = 'auth=;path=/'
           app.log('Auth: logged out')
         }
         app.showAuth = false
@@ -166,4 +175,9 @@ function parseWebSocket (raw) {
         break
     }
   }
+}
+
+function getCookie (name) {
+  var value = new RegExp(name + '=([^;]+)').exec(document.cookie)
+  return (value != null) ? unescape(value[1]) : null
 }

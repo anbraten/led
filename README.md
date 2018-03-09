@@ -1,17 +1,29 @@
 # Led
-This program written in node is a webinterface for controlling small scripts which renders a led matrix.
+This program written in node is an interface for controlling small scripts /games which render on a led matrix.
 
-## Issues
-* scripts (modules) aren't unregistered correctly and drawing of the scripts is overlaying
+## Installation
+### Development
+```
+sudo npm install -g nodemon
+npm install
+nodemon ./server.js
+```
+
+### Production (as docker container)
+* Set ```Dir``` to correct directory in run
+* Create docker container with: ```./run```
+* If you want to restart it from now on just run: ```docker restart led```
 
 ## To-Dos
 * start buffering of leds before updating and send after update
-* add webinterface script control api
-* add setp by step button to debug scripts
+* add wiimote api for srcipts
+* add step by step button to debug scripts
 * add service worker with offline cache for pwa support
 
 ## Script development
-A script is a small program / game that renders the led matrix. It can handle user input from the webinterface.
+A script is a small program / game that renders the led matrix. It can handle user input from a wiimote.
+### Good to know
+* A script can be hot reloaded. So you only have to reload it inside the interface.
 
 ### Example
 
@@ -27,23 +39,23 @@ exports = module.exports = {
 function init (_matrix) {
   Matrix = _matrix // save matrix api object
 
-  Matrix.setTick(1000) // set tickrate to 1 tick per 1000 ms
+  Matrix.setTick(1000) // set tick rate to 1 tick per 1000 ms
 
   Matrix.on('started', () => {
     console.log(exports.name) // executed when your script should start
   })
 
   Matrix.on('stopped', () => {
-    // exectued when your script should stop
+    // executed when your script should stop
   })
 
   Matrix.on('update', () => {
-    // exectued when matrix loop tick is send.
+    // executed when matrix loop tick is send.
     // this is the point you should handle your logic.
   })
 
   Matrix.on('draw', () => {
-    // exectued when your script should render leds
+    // executed when your script should render leds
   })
 }
 ```
@@ -117,7 +129,7 @@ Emitted when the matrix loop calls your script to render.
 
 `function (key, value) {}`
 
-Emitted when a user sends input via the webinterface.
+Emitted when a user sends input via the web interface.
 
 -------------------------------------------------------
 <a name="size"></a>

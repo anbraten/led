@@ -1,8 +1,7 @@
 #! /bin/bash
-DIR="/opt/led"
+DIR=$(pwd)
 docker run -ti \
 	--rm \
-	--net ju60 \
 	-v $DIR/:/home/node/app \
 	-w="/home/node/app" \
 	node:8 \

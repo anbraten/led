@@ -4,14 +4,17 @@ const ACTIONS = Object.freeze({'none': 0, 'start': 1, 'stop': 2, 'resume': 3, 'p
 
 const EventEmitter = require('events')
 class MyEmitter extends EventEmitter {}
-const events = new MyEmitter()
+const systemEvents = new MyEmitter()
+const scriptEvents = new MyEmitter()
 
 var size = 0
 
 var action = ACTIONS.none
 var leds = []
+var buffer = []
 var running
 var tick = 500
+var renderSpeed = 1000
 
 // EXPORTS
 exports = module.exports = {
@@ -21,6 +24,7 @@ exports = module.exports = {
   'resume': resume,
   'pause': pause,
   'on': on,
+  'onSystem': onSystem,
   'size': size,
   'setTick': setTick,
 
@@ -36,6 +40,7 @@ exports = module.exports = {
   'Rect': Rect,
 
   'RGB': RGB,
+  'EQAULS_RGB': EQAULS_RGB,
   'RGB_TO_STRING': RGB_TO_STRING,
   'HSV_TO_RGB': HSV_TO_RGB,
   'RND': RND,
@@ -50,7 +55,8 @@ function init (_size) {
     leds[i] = RGB(0, 0, 0)
   }
   loop()
-  events.emit('loaded')
+  renderLoop()
+  scriptEvents.emit('loaded')
 }
 
 // ////////////////////////////////////////////////////////////////////////
@@ -77,23 +83,23 @@ function loop () {
     case ACTIONS.start:
       clear()
       running = true
-      events.emit('started')
+      scriptEvents.emit('started')
       break
     case ACTIONS.stop:
       running = false
-      events.emit('stopped')
-      clear()
+      scriptEvents.emit('stopped')
+      scriptEvents.removeAllListeners()
       break
     case ACTIONS.resume:
       if (!running) {
         running = true
-        events.emit('resumed')
+        scriptEvents.emit('resumed')
       }
       break
     case ACTIONS.pause:
       if (running) {
         running = false
-        events.emit('paused')
+        scriptEvents.emit('paused')
       }
       break
     default:
@@ -101,20 +107,36 @@ function loop () {
   }
   action = ACTIONS.none
 
-  // TODO: faster stop detection
   if (running) {
-    // TODO: led buffer = current
-    events.emit('update')
-    events.emit('draw')
-    // TODO: diff(led buffer, led) and broadcast diff
+    scriptEvents.emit('update')
     setTimeout(loop, tick)
   } else {
     setTimeout(loop, 10)
   }
 }
 
+function renderLoop () {
+  if (running) {
+    scriptEvents.emit('draw')
+    for (let i = 0; i < size * size; i++) {
+      if (!(i in buffer) || !EQAULS_RGB(leds[i], buffer[i])) {
+        systemEvents.emit('broadcastLed', i, leds[i])
+        buffer[i] = leds[i]
+      }
+    }
+    systemEvents.emit('showLeds')
+    setTimeout(renderLoop, renderSpeed)
+  } else {
+    setTimeout(renderLoop, 10)
+  }
+}
+
+function onSystem (event, cb) {
+  systemEvents.on(event, cb)
+}
+
 function on (event, cb) {
-  events.on(event, cb)
+  scriptEvents.on(event, cb)
 }
 
 function setTick (_tick) {
@@ -141,7 +163,6 @@ function ledID (id, rgb) {
   }
   if (!EQAULS_RGB(leds[id], rgb)) {
     leds[id] = rgb
-    events.emit('broadcast', id, rgb)
   }
 }
 
@@ -244,8 +265,8 @@ function EQAULS_RGB (one, two) {
 function RGB_TO_STRING (rgb) {
   let str = ''
   str += '' + ((rgb.r < 100) ? ((rgb.r >= 10) ? ('0' + rgb.r) : ('00' + rgb.r)) : rgb.r)
-  str += '' + ((rgb.g < 100) ? ((rgb.g >= 10) ? ('0' + rgb.g) : ('00' + rgb.g)) : rgb.g)
-  str += '' + ((rgb.b < 100) ? ((rgb.b >= 10) ? ('0' + rgb.b) : ('00' + rgb.b)) : rgb.b)
+  str += ':' + ((rgb.g < 100) ? ((rgb.g >= 10) ? ('0' + rgb.g) : ('00' + rgb.g)) : rgb.g)
+  str += ':' + ((rgb.b < 100) ? ((rgb.b >= 10) ? ('0' + rgb.b) : ('00' + rgb.b)) : rgb.b)
   return str
 }
 
