@@ -6,7 +6,7 @@ This program written in node is an interface for controlling small scripts / gam
 ```
 sudo npm install -g nodemon
 npm install
-nodemon ./server.js
+nodemon ./server.js --ignore 'scripts/*'
 ```
 
 ### Production (as docker container)

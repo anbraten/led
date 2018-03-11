@@ -1,7 +1,8 @@
 module.exports = {
   development: {
     matrix: {
-      size: 10
+      size: 10,
+      serialPort: null
     },
     web: {
       port: 8484,
@@ -22,7 +23,8 @@ module.exports = {
   },
   production: {
     matrix: {
-      size: 10
+      size: 10,
+      serialPort: '/dev/ttyUSB0'
     },
     web: {
       port: 80,

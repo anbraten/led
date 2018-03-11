@@ -5,30 +5,18 @@
 // //////////////////////////////////////////////////////
 // constant
 // //////////////////////////////////////////////////////
-const SerialPort = require('serialport')
 const express = require('express')
 const web = express()
-const WebSocket = require('ws')
 const fs = require('fs')
 const path = require('path')
-const Matrix = require('./inc/matrix')
 const config = require('./config')[process.env.NODE_ENV === 'production' ? 'production' : 'development']
 
-// //////////////////////////////////////////////////////
-// variables
-// //////////////////////////////////////////////////////
-var clients = []
-var connectedClients = 0
-var script
-var wss
-var serialPort = new SerialPort('/dev/ttyUSB0', {
-  baudRate: 115200,
-  autoOpen: false
-})
+const Matrix = require('./inc/matrix')
+const serial = require('./inc/serial')
+const webSocket = require('./inc/websocket')
 
-// //////////////////////////////////////////////////////
-// main script
-// //////////////////////////////////////////////////////
+var script
+
 init()
 
 // //////////////////////////////////////////////////////
@@ -36,32 +24,78 @@ init()
 // //////////////////////////////////////////////////////
 function init () {
   // SERIAL
-  serialPort.on('open', () => {
-    serialPort.on('data', (data) => {
-      if (data === 'ready') {
-        log('Serial: connected')
-        Matrix.connected = true
-      }
+  if (config.matrix.serialPort) {
+    serial.init(config.matrix.serialPort)
+    serial.on('connected', () => {
+      log('Serial: connected')
+      Matrix.connected = true
+      webSocket.broadcast({
+        'type': 'status',
+        'status': Matrix.connected
+      })
     })
+    serial.on('disconnected', () => {
+      log('Serial: closed')
+      Matrix.connected = false
+      webSocket.broadcast({
+        'type': 'status',
+        'status': Matrix.connected
+      })
+    })
+  }
+
+  // WebSocket
+  webSocket.init(
+    config.web.websocket.port,
+    config.auth.autoLogin,
+    config.auth.password
+  )
+  webSocket.on('newConnection', (ws) => {
+    webSocket.write(ws, {
+      'type': 'status',
+      'status': Matrix.connected
+    })
+    webSocket.write(ws, {
+      'type': 'script',
+      'script': script ? script.id : null
+    })
+    if (script) {
+      // TODO: send script info, inputs, ...
+    } else {
+      listScripts((files) => {
+        webSocket.write(ws, {
+          'type': 'scripts',
+          'scripts': files
+        })
+      })
+    }
   })
-
-  serialPort.on('close', () => {
-    log('Serial: closed')
-    Matrix.connected = false
-    connectSerial()
+  webSocket.on('authenticated', (ws, auth) => {
+    if (auth && script) {
+      let leds = Matrix.toArray()
+      for (let i = 0; i < leds.length; i++) {
+        webSocket.broadcast({
+          'type': 'led',
+          'id': i,
+          'rgb': leds[i]
+        })
+      }
+    }
   })
-
-  // open errors will be emitted as an error event
-  serialPort.on('error', (err) => {
-    log('Serial Error: ' + err.message)
+  webSocket.on('data', (data, auth) => {
+    if (auth) {
+      switch (data.type) {
+        case 'launch_script':
+          launchScript(data.script)
+          break
+        case 'stop_script':
+          stopScript()
+          break
+      }
+    } else {
+      // public commands
+    }
   })
-
-  connectSerial()
-
-  // Matrix
-  Matrix.init(config.matrix.size)
-  Matrix.onSystem('broadcastLed', broadcastLed)
-  Matrix.onSystem('showLeds', showLeds)
 
   // Express (static web files)
   web.use(express.static(path.join(__dirname, config.web.root)))
@@ -73,38 +107,13 @@ function init () {
   })
   web.listen(config.web.port)
 
-  // WebSocket
-  wss = new WebSocket.Server({ port: config.web.websocket.port })
-  wss.on('connection', (ws) => {
-    let id = connectedClients
-    startWebSocket(id, ws)
-
-    ws.on('message', (msg) => {
-      parseWebSocket(id, ws, msg)
-    })
-    ws.on('close', (code, reason) => {
-      closeWebSocket(id, ws)
-    })
-    ws.on('error', (e) => {
-      ws.terminate()
-    })
-    ws.on('pong', () => {
-      ws.isAlive = true
-    })
-  })
-
-  // WebSocket keep a live pings
-  setInterval(() => {
-    wss.clients.forEach(function each (ws) {
-      if (ws.isAlive === false) return ws.terminate()
-      ws.isAlive = false
-      ws.ping(() => {})
-    })
-  }, 30000)
+  // Matrix
+  Matrix.init(config.matrix.size)
+  Matrix.onSystem('broadcastLed', broadcastLed)
+  Matrix.onSystem('showLeds', showLeds)
 
   console.log('LED Server 0.2')
   console.log('Webinterface: port ' + config.web.websocket.port)
-  console.log('Websocket: port ' + config.web.port)
 
   if (config.scripts.autoStart) {
     launchScript(config.scripts.autoStart)
@@ -112,15 +121,13 @@ function init () {
 }
 
 function broadcastLed (id, rgb) {
-  wss.clients.forEach(function each (ws) {
-    if (ws.authenticated) {
-      sendWebSocket(ws, {
-        'type': 'led',
-        'id': id,
-        'rgb': rgb
-      })
-    }
-  })
+  webSocket.broadcast({
+    'type': 'led',
+    'id': id,
+    'rgb': rgb
+  }, true)
+
+  /*
   if (Matrix.connected) {
     let x = Math.floor(id / Matrix.size)
     let y = id % Matrix.size
@@ -128,153 +135,43 @@ function broadcastLed (id, rgb) {
       x = Matrix.size - x - 1
     }
     id = (y * Matrix.size + x)
-    id = id < 10 ? '00' + id : (id < 100) ? '0' + id : id
-    var data = id + ':' + Matrix.RGB_TO_STRING(rgb)
-    serialPort.write(data, 'binary', (err) => {
+    // id = id < 10 ? '00' + id : (id < 100) ? '0' + id : id
+    var data = []
+    data.push(id)
+    data.push(rgb.r)
+    data.push(rgb.g)
+    data.push(rgb.b)
+    serial.write(data, (err) => {
       if (err) {
         log('Serial Error: ' + err.message)
       }
     })
   }
+  */
 }
 
 function showLeds () {
   if (Matrix.connected) {
     // mqttClient.publish(config.mqtt.topic, 'show')
-    serialPort.write('show', 'binary', (err) => {
+    var data = []
+    var leds = Matrix.toArray()
+    for (let i = 0; i < leds.length; i++) {
+      let x = Math.floor(i / Matrix.size)
+      let y = i % Matrix.size
+      if (x % 2 === 0) {
+        y = Matrix.size - y - 1
+      }
+      let id = (y * Matrix.size + x)
+      data.push(leds[id].r)
+      data.push(leds[id].g)
+      data.push(leds[id].b)
+    }
+    serial.write(data, (err) => {
       if (err) {
         log('Serial Error: ' + err.message)
       }
     })
   }
-}
-
-// //////////////////////////////////////////////////////
-// Serial functions
-// //////////////////////////////////////////////////////
-function connectSerial () {
-  serialPort.open((err) => {
-    if (err) {
-      setTimeout(connectSerial, 1000)
-    }
-  })
-}
-
-// //////////////////////////////////////////////////////
-// WebSocket functions
-// //////////////////////////////////////////////////////
-function startWebSocket (id, ws) {
-  console.log('WebSocket: new connection')
-  clients[id] = ws
-  ws.authenticated = false
-  connectedClients++
-
-  sendWebSocket(ws, {
-    'type': 'status',
-    'status': Matrix.connected
-  })
-  sendWebSocket(ws, {
-    'type': 'script',
-    'script': script ? script.id : null
-  })
-  if (script) {
-    // TODO: send script info, inputs, ...
-  } else {
-    listScripts((files) => {
-      sendWebSocket(ws, {
-        'type': 'scripts',
-        'scripts': files
-      })
-    })
-  }
-  if (config.auth.autoLogin) {
-    authWebsocket(ws, true)
-  }
-}
-
-function closeWebSocket (id, ws) {
-  ws.terminate()
-  delete clients[id]
-  connectedClients--
-  console.log('WebSocket: connection closed')
-}
-
-function parseWebSocket (id, ws, msg) {
-  let data
-  try {
-    data = JSON.parse(msg)
-  } catch (e) {
-  }
-
-  if (ws.authenticated === true) {
-    switch (data.type) {
-      case 'logout':
-        authWebsocket(ws, false)
-        return
-      case 'launch_script':
-        launchScript(data.script)
-        return
-      case 'stop_script':
-        stopScript()
-        return
-    }
-  }
-
-  switch (data.type) {
-    case 'login':
-      if (data.password === config.auth.password || config.auth.password === null) {
-        authWebsocket(ws, true)
-      } else {
-        // TODO: auth failed
-      }
-      break
-    case 'authenticated':
-      sendWebSocket(ws, {
-        'type': 'authenticated',
-        'auth': ws.authenticated
-      })
-      break
-    case 'input':
-      if (script) {
-        script.input(data.event)
-      }
-      break
-    default:
-      console.log('< ' + msg)
-      break
-  }
-}
-
-function sendWebSocket (ws, data) {
-  if (ws.readyState === ws.OPEN) {
-    var raw = JSON.stringify(data)
-    ws.send(raw)
-  }
-}
-
-function authWebsocket (ws, auth) {
-  ws.authenticated = auth
-  sendWebSocket(ws, {
-    'type': 'auth',
-    'auth': ws.authenticated
-  })
-  // send all leds
-  if (ws.authenticated && script) {
-    let leds = Matrix.toArray()
-    for (let i = 0; i < leds.length; i++) {
-      broadcastWebSocket({
-        'type': 'led',
-        'id': i,
-        'rgb': leds[i]
-      })
-    }
-  }
-}
-
-function broadcastWebSocket (data) {
-  wss.clients.forEach(function each (ws) {
-    sendWebSocket(ws, data)
-  })
 }
 
 // //////////////////////////////////////////////////////
@@ -299,7 +196,7 @@ function launchScript (scriptName) {
     script.id = scriptName
     script.init(Matrix)
     Matrix.start()
-    broadcastWebSocket({
+    webSocket.broadcast({
       'type': 'script',
       'script': script.id
     })
@@ -315,12 +212,12 @@ function stopScript () {
     script = null
     delete require.cache[path.join(__dirname, config.scripts.path, id)]
     // TODO: unregister event listeners correctly
-    broadcastWebSocket({
+    webSocket.broadcast({
       'type': 'script',
       'script': null
     })
     listScripts((files) => {
-      broadcastWebSocket({
+      webSocket.broadcast({
         'type': 'scripts',
         'scripts': files
       })
@@ -333,7 +230,7 @@ function stopScript () {
 // //////////////////////////////////////////////////////
 function log (msg) {
   console.log(msg)
-  broadcastWebSocket({
+  webSocket.broadcast({
     'type': 'log',
     'log': msg
   })

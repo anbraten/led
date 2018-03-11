@@ -14,7 +14,7 @@ var leds = []
 var buffer = []
 var running
 var tick = 500
-var renderSpeed = 10
+var renderSpeed = 100
 
 // EXPORTS
 exports = module.exports = {

@@ -83,7 +83,7 @@
 			<button @click="login()" type="submit" class="btn btn-secondary">Login</button>
 		</div>
 
-    <div id="debug" v-bind:class="{'open': debug}" class="container-fluid">
+    <div id="debug" v-bind:class="{'open': showControls}" class="container-fluid">
       <div v-if="leds" class="leds">
   				<div v-for="led in leds" v-bind:style="{ background: rgb(led) }" class="led"></div>
       </div>
@@ -104,7 +104,7 @@
       </div>
     </div>
 
-    <div v-if="auth">
+    <div v-if="auth && false">
       <button v-if="debug" @click="debug=false" class="debug-opener btn btn-secondary"><i class="fa fa-times"></i></button>
       <button v-else @click="debug=true" class="debug-opener btn btn-secondary"><i class="fa fa-chevron-left"></i></button>
     </div>
