@@ -1,6 +1,6 @@
 var socket
 
-// eslint-disable-next-line
+// eslint-disable-next-line no-undef
 var app = new Vue({
   'el': '#app',
 
@@ -34,8 +34,7 @@ var app = new Vue({
   },
 
   methods: {
-    init: function () {
-    },
+    init: function () {},
     send: function (data) {
       if (socket && socket.readyState === socket.OPEN) {
         socket.send(JSON.stringify(data))
@@ -96,11 +95,10 @@ var app = new Vue({
   }
 })
 
-// socket = connectWebsocket('ws://localhost:8080')
-socket = connectWebsocket('wss://led.ju60.de/ws')
-
+// eslint-disable-next-line no-unused-vars
 function connectWebsocket (url) {
   app.init()
+  // eslint-disable-next-line no-undef
   var res = new WebSocket(url)
 
   res.onopen = (e) => {
@@ -116,8 +114,7 @@ function connectWebsocket (url) {
       })
     }
   }
-  res.onerror = (e) => {
-  }
+  res.onerror = (e) => {}
   res.onmessage = (e) => {
     parseWebSocket(e.data)
   }

@@ -1,4 +1,4 @@
 node_modules/
-scripts/
+/scripts/
 config.js
 package-lock.json

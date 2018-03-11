@@ -14,7 +14,7 @@ var leds = []
 var buffer = []
 var running
 var tick = 500
-var renderSpeed = 1000
+var renderSpeed = 10
 
 // EXPORTS
 exports = module.exports = {
@@ -140,7 +140,7 @@ function on (event, cb) {
 }
 
 function setTick (_tick) {
-  if (_tick > 100) {
+  if (_tick >= 10) {
     tick = _tick
   }
 }

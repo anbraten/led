@@ -5,7 +5,7 @@
 // //////////////////////////////////////////////////////
 // constant
 // //////////////////////////////////////////////////////
-const mqtt = require('mqtt')
+const SerialPort = require('serialport')
 const express = require('express')
 const web = express()
 const WebSocket = require('ws')
@@ -20,8 +20,11 @@ const config = require('./config')[process.env.NODE_ENV === 'production' ? 'prod
 var clients = []
 var connectedClients = 0
 var script
-var mqttClient
 var wss
+var serialPort = new SerialPort('/dev/ttyUSB0', {
+  baudRate: 115200,
+  autoOpen: false
+})
 
 // //////////////////////////////////////////////////////
 // main script
@@ -32,27 +35,42 @@ init()
 // core functions
 // //////////////////////////////////////////////////////
 function init () {
+  // SERIAL
+  serialPort.on('open', () => {
+    serialPort.on('data', (data) => {
+      if (data === 'ready') {
+        log('Serial: connected')
+        Matrix.connected = true
+      }
+    })
+  })
+
+  serialPort.on('close', () => {
+    log('Serial: closed')
+    Matrix.connected = false
+    connectSerial()
+  })
+
+  // open errors will be emitted as an error event
+  serialPort.on('error', (err) => {
+    log('Serial Error: ' + err.message)
+  })
+
+  connectSerial()
+
   // Matrix
   Matrix.init(config.matrix.size)
   Matrix.onSystem('broadcastLed', broadcastLed)
   Matrix.onSystem('showLeds', showLeds)
 
-  // MQTT
-  mqttClient = mqtt.connect('mqtt://' + config.mqtt.server + ':' + config.mqtt.port, {
-    username: config.mqtt.user,
-    password: config.mqtt.password
-  })
-  mqttClient.on('connect', () => {
-    console.log('mqtt: connected')
-    Matrix.connected = true
-    mqttClient.publish(config.mqtt.topic, 'clear')
-    if (config.scripts.autoStart) {
-      launchScript(config.scripts.autoStart)
-    }
-  })
-
   // Express (static web files)
   web.use(express.static(path.join(__dirname, config.web.root)))
+  web.get('/load.js', function (req, res) {
+    res.set('Content-Type', 'text/javascript')
+    res.send('socket = connectWebsocket("' +
+      config.web.websocket.address + '")'
+    )
+  })
   web.listen(config.web.port)
 
   // WebSocket
@@ -87,6 +105,10 @@ function init () {
   console.log('LED Server 0.2')
   console.log('Webinterface: port ' + config.web.websocket.port)
   console.log('Websocket: port ' + config.web.port)
+
+  if (config.scripts.autoStart) {
+    launchScript(config.scripts.autoStart)
+  }
 }
 
 function broadcastLed (id, rgb) {
@@ -107,14 +129,35 @@ function broadcastLed (id, rgb) {
     }
     id = (y * Matrix.size + x)
     id = id < 10 ? '00' + id : (id < 100) ? '0' + id : id
-    mqttClient.publish(config.mqtt.topic, id + ':' + Matrix.RGB_TO_STRING(rgb))
+    var data = id + ':' + Matrix.RGB_TO_STRING(rgb)
+    serialPort.write(data, 'binary', (err) => {
+      if (err) {
+        log('Serial Error: ' + err.message)
+      }
+    })
   }
 }
 
 function showLeds () {
   if (Matrix.connected) {
-    mqttClient.publish(config.mqtt.topic, 'show')
+    // mqttClient.publish(config.mqtt.topic, 'show')
+    serialPort.write('show', 'binary', (err) => {
+      if (err) {
+        log('Serial Error: ' + err.message)
+      }
+    })
   }
+}
+
+// //////////////////////////////////////////////////////
+// Serial functions
+// //////////////////////////////////////////////////////
+function connectSerial () {
+  serialPort.open((err) => {
+    if (err) {
+      setTimeout(connectSerial, 1000)
+    }
+  })
 }
 
 // //////////////////////////////////////////////////////
@@ -228,14 +271,6 @@ function authWebsocket (ws, auth) {
   }
 }
 
-/*
-function sendWebSocketID (id, data) {
-  if (id in clients) {
-    return sendWebSocket(clients[id], data)
-  }
-}
-*/
-
 function broadcastWebSocket (data) {
   wss.clients.forEach(function each (ws) {
     sendWebSocket(ws, data)
@@ -245,7 +280,6 @@ function broadcastWebSocket (data) {
 // //////////////////////////////////////////////////////
 // Script functions
 // //////////////////////////////////////////////////////
-
 function listScripts (cb) {
   let dir = path.join(__dirname, config.scripts.path)
   fs.readdir(dir, function (e, files) {
@@ -270,11 +304,7 @@ function launchScript (scriptName) {
       'script': script.id
     })
   } catch (e) {
-    console.error(e)
-    broadcastWebSocket({
-      'type': 'log',
-      'log': 'Error loading script: ' + e
-    })
+    log(e)
   }
 }
 
@@ -296,4 +326,15 @@ function stopScript () {
       })
     })
   }
+}
+
+// //////////////////////////////////////////////////////
+// Helper functions
+// //////////////////////////////////////////////////////
+function log (msg) {
+  console.log(msg)
+  broadcastWebSocket({
+    'type': 'log',
+    'log': msg
+  })
 }

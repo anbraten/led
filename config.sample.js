@@ -3,16 +3,11 @@ module.exports = {
     matrix: {
       size: 10
     },
-    mqtt: {
-      server: 'iot.eclipse.org',
-      user: null,
-      password: null,
-      topic: 'led/matrix'
-    },
     web: {
       port: 8484,
       root: '/public',
       websocket: {
+        address: 'ws://localhost:8080',
         port: 8080
       }
     },
@@ -29,16 +24,11 @@ module.exports = {
     matrix: {
       size: 10
     },
-    mqtt: {
-      server: 'iot.eclipse.org',
-      user: null,
-      password: null,
-      topic: 'led/matrix'
-    },
     web: {
       port: 80,
       root: '/public',
       websocket: {
+        address: 'wss://led.example.org/ws',
         port: 8080
       }
     },

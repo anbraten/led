@@ -4,7 +4,7 @@
 	"version": "0.0.2",
 	"author": "Anton Bracke",
 	"dependencies": {
-		"mqtt": "^2.15.1",
+		"serialport": "^5.0.0",
 		"express": "^4.16.2",
 		"ws": "^4.0.0"
 	},
