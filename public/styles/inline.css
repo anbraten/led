@@ -71,16 +71,15 @@ html,body{
   bottom: 1rem;
 }
 #debug {
+  display: none;
   position: absolute;
   height: 100%;
-  right: -100%;
   width: 100%;
   background: rgba(255, 255, 255, 0.9);
   overflow: hidden;
-  transition: all 1s;
 }
 #debug.open {
-  right: 0;
+  display: block;
 }
 #debug .leds{
 	margin: 2rem auto;
