@@ -9,7 +9,8 @@ const express = require('express')
 const web = express()
 const fs = require('fs')
 const path = require('path')
-const config = require('./config')[process.env.NODE_ENV === 'production' ? 'production' : 'development']
+const nodeEnv = process.env.NODE_ENV === 'production' ? 'production' : 'development'
+const config = require('./config')[nodeEnv]
 
 const Matrix = require('./inc/matrix')
 const serial = require('./inc/serial')
@@ -27,6 +28,7 @@ function init () {
   if (config.matrix.serialPort) {
     serial.init(config.matrix.serialPort)
     serial.on('connected', () => {
+      // TODO: send all current led states
       log('Serial: connected')
       Matrix.connected = true
       webSocket.broadcast({
@@ -109,68 +111,49 @@ function init () {
 
   // Matrix
   Matrix.init(config.matrix.size)
-  Matrix.onSystem('broadcastLed', broadcastLed)
-  Matrix.onSystem('showLeds', showLeds)
+  Matrix.onSystem('broadcastLed', (id, rgb) => {
+    webSocket.broadcast({
+      'type': 'led',
+      'id': id,
+      'rgb': rgb
+    }, true)
 
-  console.log('LED Server 0.2')
-  console.log('Webinterface: port ' + config.web.websocket.port)
+    if (Matrix.connected) {
+      let x = Math.floor(id / Matrix.size)
+      let y = id % Matrix.size
+      if (y % 2 === 0) {
+        x = Matrix.size - x - 1
+      }
+      id = (y * Matrix.size + x)
+      var data = []
+      data.push(1)
+      data.push(id)
+      data.push(rgb.r)
+      data.push(rgb.g)
+      data.push(rgb.b)
+      serial.write(data, (err) => {
+        if (err) {
+          log('Serial Error: ' + err.message)
+        }
+      })
+    }
+  })
+
+  Matrix.onSystem('showLeds', () => {
+    if (Matrix.connected) {
+      serial.write([2], (err) => {
+        if (err) {
+          log('Serial Error: ' + err.message)
+        }
+      })
+    }
+  })
+
+  console.log('LED Server 0.3 (' + nodeEnv + ')')
+  console.log('Webinterface: port ' + config.web.port)
 
   if (config.scripts.autoStart) {
     launchScript(config.scripts.autoStart)
-  }
-}
-
-function broadcastLed (id, rgb) {
-  webSocket.broadcast({
-    'type': 'led',
-    'id': id,
-    'rgb': rgb
-  }, true)
-
-  /*
-  if (Matrix.connected) {
-    let x = Math.floor(id / Matrix.size)
-    let y = id % Matrix.size
-    if (y % 2 === 0) {
-      x = Matrix.size - x - 1
-    }
-    id = (y * Matrix.size + x)
-    // id = id < 10 ? '00' + id : (id < 100) ? '0' + id : id
-    var data = []
-    data.push(id)
-    data.push(rgb.r)
-    data.push(rgb.g)
-    data.push(rgb.b)
-    serial.write(data, (err) => {
-      if (err) {
-        log('Serial Error: ' + err.message)
-      }
-    })
-  }
-  */
-}
-
-function showLeds () {
-  if (Matrix.connected) {
-    // mqttClient.publish(config.mqtt.topic, 'show')
-    var data = []
-    var leds = Matrix.toArray()
-    for (let i = 0; i < leds.length; i++) {
-      let x = Math.floor(i / Matrix.size)
-      let y = i % Matrix.size
-      if (x % 2 === 0) {
-        y = Matrix.size - y - 1
-      }
-      let id = (y * Matrix.size + x)
-      data.push(leds[id].r)
-      data.push(leds[id].g)
-      data.push(leds[id].b)
-    }
-    serial.write(data, (err) => {
-      if (err) {
-        log('Serial Error: ' + err.message)
-      }
-    })
   }
 }
 
@@ -181,8 +164,11 @@ function listScripts (cb) {
   let dir = path.join(__dirname, config.scripts.path)
   fs.readdir(dir, function (e, files) {
     if (e) {
-      console.error(e)
+      log(e)
     }
+    // remove hidden files
+    // TODO: return nice script names without file extension etc.
+    files = files.filter(item => !(/(^|\/)\.[^/.]/g).test(item))
     cb(files)
   })
 }
@@ -211,7 +197,6 @@ function stopScript () {
     Matrix.stop()
     script = null
     delete require.cache[path.join(__dirname, config.scripts.path, id)]
-    // TODO: unregister event listeners correctly
     webSocket.broadcast({
       'type': 'script',
       'script': null

@@ -1,14 +1,14 @@
 'use strict'
 
-const ACTIONS = Object.freeze({'none': 0, 'start': 1, 'stop': 2, 'resume': 3, 'pause': 4})
-
+const Remotes = require('./remotes')
 const EventEmitter = require('events')
 class MyEmitter extends EventEmitter {}
 const systemEvents = new MyEmitter()
 const scriptEvents = new MyEmitter()
 
-var size = 0
+const ACTIONS = Object.freeze({'none': 0, 'start': 1, 'stop': 2, 'restart': 3, 'resume': 4, 'pause': 5})
 
+var size = 0
 var action = ACTIONS.none
 var leds = []
 var buffer = []
@@ -21,12 +21,15 @@ exports = module.exports = {
   'init': init,
   'start': start,
   'stop': stop,
+  'restart': restart,
   'resume': resume,
   'pause': pause,
   'on': on,
   'onSystem': onSystem,
   'size': size,
   'setTick': setTick,
+
+  'feedback': feedback,
 
   'led': ledXY,
   'ledXY': ledXY,
@@ -57,6 +60,26 @@ function init (_size) {
   loop()
   renderLoop()
   scriptEvents.emit('loaded')
+
+  Remotes.init()
+  Remotes.on('button', (id, btns) => {
+    if (btns.plus && btns.minus) {
+      restart()
+    }
+    if (btns.btn1) {
+      pause()
+    }
+    if (btns.btn2) {
+      resume()
+    }
+    if (btns.minus) {
+      setTick(tick + 100)
+    }
+    if (btns.plus) {
+      setTick(tick - 100)
+    }
+    scriptEvents.emit('input', id, btns)
+  })
 }
 
 // ////////////////////////////////////////////////////////////////////////
@@ -70,8 +93,12 @@ function stop () {
   action = ACTIONS.stop
 }
 
+function restart () {
+  action = ACTIONS.restart
+}
+
 function resume () {
-  action = ACTIONS.stop
+  action = ACTIONS.resume
 }
 
 function pause () {
@@ -89,6 +116,14 @@ function loop () {
       running = false
       scriptEvents.emit('stopped')
       scriptEvents.removeAllListeners()
+      clear()
+      break
+    case ACTIONS.restart:
+      running = false
+      scriptEvents.emit('stopped')
+      clear()
+      running = true
+      scriptEvents.emit('started')
       break
     case ACTIONS.resume:
       if (!running) {
@@ -116,19 +151,15 @@ function loop () {
 }
 
 function renderLoop () {
-  if (running) {
-    scriptEvents.emit('draw')
-    for (let i = 0; i < size * size; i++) {
-      if (!(i in buffer) || !EQAULS_RGB(leds[i], buffer[i])) {
-        systemEvents.emit('broadcastLed', i, leds[i])
-        buffer[i] = leds[i]
-      }
+  scriptEvents.emit('draw')
+  for (let i = 0; i < size * size; i++) {
+    if (!(i in buffer) || !EQAULS_RGB(leds[i], buffer[i])) {
+      systemEvents.emit('broadcastLed', i, leds[i])
+      buffer[i] = leds[i]
     }
-    systemEvents.emit('showLeds')
-    setTimeout(renderLoop, renderSpeed)
-  } else {
-    setTimeout(renderLoop, 10)
   }
+  systemEvents.emit('showLeds')
+  setTimeout(renderLoop, renderSpeed)
 }
 
 function onSystem (event, cb) {
@@ -143,6 +174,10 @@ function setTick (_tick) {
   if (_tick >= 10) {
     tick = _tick
   }
+}
+
+function feedback () {
+  Remotes.feedback()
 }
 
 // ////////////////////////////////////////////////////////////////////////
