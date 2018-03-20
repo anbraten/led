@@ -166,9 +166,9 @@ function listScripts (cb) {
     if (e) {
       log(e)
     }
-    // remove hidden files
+    // only list .js files
+    files = files.filter(item => (/(.*).js$/g).test(item))
     // TODO: return nice script names without file extension etc.
-    files = files.filter(item => !(/(^|\/)\.[^/.]/g).test(item))
     cb(files)
   })
 }
