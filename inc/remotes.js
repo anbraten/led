@@ -1,6 +1,4 @@
-var wii = require('wiimote')
-var wii2 = require('wiimote2')
-
+const net = require('net')
 const EventEmitter = require('events')
 class MyEmitter extends EventEmitter {}
 const emitter = new MyEmitter()
@@ -18,7 +16,69 @@ const BUTTON_DOWN = 1024
 const BUTTON_HOME = 128
 
 var wiimotes = []
-var connectedRemotes = 0
+
+function Wiimote (id, send) {
+  this.id = id
+  this.error = 0
+  this.acc = [0, 0, 0]
+  this.ir = {}
+  this._buttons = 0
+  this.battery = 0
+  this.send = send
+
+  this.led = function (val) {
+    this.send(this.id + '$led$' + val)
+  }
+
+  this.rumble = function (val) {
+    this.send(this.id + '$rumble$' + (val ? 'true' : 'false'))
+  }
+
+  this.buttons = function () {
+    let btn = this._buttons
+    var btns = {
+      'btn1': (btn & BUTTON_1) === BUTTON_1,
+      'btn2': (btn & BUTTON_2) === BUTTON_2,
+      'a': (btn & BUTTON_A) === BUTTON_A,
+      'b': (btn & BUTTON_B) === BUTTON_B,
+      'plus': (btn & BUTTON_PLUS) === BUTTON_PLUS,
+      'minus': (btn & BUTTON_MINUS) === BUTTON_MINUS,
+      'up': (btn & BUTTON_UP) === BUTTON_UP,
+      'left': (btn & BUTTON_LEFT) === BUTTON_LEFT,
+      'down': (btn & BUTTON_DOWN) === BUTTON_DOWN,
+      'right': (btn & BUTTON_RIGHT) === BUTTON_RIGHT,
+      'home': (btn & BUTTON_HOME) === BUTTON_HOME
+    }
+    return btns
+  }
+
+  this.update = function (key, value) {
+    if (key === 'acc') {
+      this.acc = value
+      emit('acc', this.id, this.acc)
+    }
+
+    if (key === 'ir') {
+      this.ir = value
+      emit('ir', this.id, this.ir)
+    }
+
+    if (key === 'buttons') {
+      this._buttons = value
+      emit('button', this.id, this.buttons())
+    }
+
+    if (key === 'error') {
+      this.error = value
+      emit('errors', this.id, this.error)
+    }
+
+    if (key === 'battery') {
+      this.battery = value
+      emit('battery', this.id, this.battery)
+    }
+  }
+}
 
 // EXPORTS
 exports = module.exports = {
@@ -33,8 +93,7 @@ exports = module.exports = {
 // //////////////////////////////////////////////////////
 
 function init () {
-  // connect('00:22:D7:D9:36:D7')
-  // connect('00:22:D7:94:69:CB')
+  connect('127.0.0.1', 5005)
 }
 
 function feedback () {
@@ -48,82 +107,58 @@ function feedback () {
   }, 100)
 }
 
-function connect (mac) {
-  var wiimote = (mac === '00:22:D7:D9:36:D7') ? new wii.WiiMote() : new wii2.WiiMote()
-  wiimote.mac = mac
-  wiimote.connect(mac, (err) => {
-    if (err) {
-      console.log('error:', err)
-      setTimeout(() => {
-        connect(mac)
-      }, 1000)
-      return
-    }
+function connect (host, port) {
+  var client = net.Socket()
+  var buffer = ''
 
-    var id = connectedRemotes
-    connectedRemotes++
-    for (var i = 1; i <= connectedRemotes; i++) {
-      wiimote.led(i, true)
-    }
-    console.log('Wiimote[' + mac + ']: connected', id)
-    wiimotes.push(wiimote)
+  console.log('Remotes: connecting via ' + host + ':' + port + ' ...')
 
-    wiimote.on('disconnect', () => {
-      console.log('Wiimote[' + mac + ']: disconnected')
-      connectedRemotes--
-      setTimeout(() => {
-        connect(mac)
-      }, 1000)
-    })
+  client.connect({'host': host, 'port': port}, () => {
+    console.log('Remotes: connected')
+  })
 
-    wiimote.on('status', (status) => {
-      console.log('Wiimote[' + mac + ']:', status)
-      emitter.emit('status', id, status)
-    })
-
-    wiimote.ir(true)
-    wiimote.on('ir', (points) => {
-      for (var p in points) {
-        console.log('Wiimote[' + mac + '] Point:', p['x'], p['y'], p['size'])
-      }
-      emitter.emit('ir', id, points)
-    })
-
-    wiimote.button(true)
-    wiimote.on('button', (btn, err) => {
-      if (err) {
-        console.log('Wiimote[' + mac + '] Button error:', err)
+  client.on('data', function (data) {
+    buffer += data.toString('utf8')
+    while (buffer.includes('\n')) {
+      var index = buffer.indexOf('\n')
+      try {
+        data = JSON.parse(buffer.substr(0, index))
+      } catch (e) {
+        console.log('error', e)
         return
       }
+      buffer = buffer.substr(index + 1)
 
-      var btns = {
-        'btn1': (btn & BUTTON_1) === BUTTON_1,
-        'btn2': (btn & BUTTON_2) === BUTTON_2,
-        'a': (btn & BUTTON_A) === BUTTON_A,
-        'b': (btn & BUTTON_B) === BUTTON_B,
-        'plus': (btn & BUTTON_PLUS) === BUTTON_PLUS,
-        'minus': (btn & BUTTON_MINUS) === BUTTON_MINUS,
-        'up': (btn & BUTTON_UP) === BUTTON_UP,
-        'left': (btn & BUTTON_LEFT) === BUTTON_LEFT,
-        'down': (btn & BUTTON_DOWN) === BUTTON_DOWN,
-        'right': (btn & BUTTON_RIGHT) === BUTTON_RIGHT,
-        'home': (btn & BUTTON_HOME) === BUTTON_HOME
+      if ('id' in data && 'key' in data && 'value' in data) {
+        if (!(data.id in wiimotes)) {
+          wiimotes[data.id] = new Wiimote(data.id, (str) => {
+            client.write(str + '\n')
+          })
+          wiimotes[data.id].led(data.id + 1)
+          console.log('Remotes: wiimote ' + data.id + ' detected')
+        }
+        wiimotes[data.id].update(data.key, data.value)
       }
+    }
+  })
 
-      emitter.emit('button', id, btns)
-    })
+  client.on('error', (err) => {
+    console.log('Remotes: connection error', err)
+    client.destroy()
+  })
 
-    wiimote.on('accelerometer', (data, err) => {
-      if (err) {
-        console.log('Wiimote[' + mac + '] Accelerometer error:', err)
-        return
-      }
-      console.log('Wiimote[' + mac + '] Accelerometer:', data)
-      emitter.emit('accelerometer', id, data)
-    })
+  client.on('close', function () {
+    console.log('Remotes: disconnected')
+    setTimeout(() => {
+      connect(host, port)
+    }, 1000)
   })
 }
 
 function on (name, cb) {
   emitter.on(name, cb)
+}
+
+function emit (name, id, data) {
+  emitter.emit(name, id, data)
 }
