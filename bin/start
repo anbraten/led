@@ -1,0 +1,22 @@
+#! /bin/sh
+
+# check initial setup
+if [ ! -f /setup_done ]; then
+  apk add --no-cache \
+    npm \
+    nodejs
+
+  cd /app
+  npm install
+
+  echo "" > /setup_done
+fi
+
+cd /app
+
+if [ -f /dev ]; then
+  npm run watch
+else
+  npm run start
+fi
+

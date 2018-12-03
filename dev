@@ -1,9 +1,0 @@
-#! /bin/bash
-DIR=$(pwd)
-docker run -ti \
-	--rm \
-	-v $DIR/:/home/node/app \
-	-w="/home/node/app" \
-	node:8 \
-	npm start
-#	bash -c "npm install && npm start"

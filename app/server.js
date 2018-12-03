@@ -1,10 +1,3 @@
-#!/usr/bin/env node
-
-'use strict'
-
-// //////////////////////////////////////////////////////
-// constant
-// //////////////////////////////////////////////////////
 const express = require('express')
 const web = express()
 const fs = require('fs')
@@ -12,9 +5,9 @@ const path = require('path')
 const nodeEnv = process.env.NODE_ENV === 'production' ? 'production' : 'development'
 const config = require('./config')[nodeEnv]
 
-const Matrix = require('./inc/matrix')
-const serial = require('./inc/serial')
-const webSocket = require('./inc/websocket')
+const Matrix = require('./src/matrix')
+const ledwall = require('./src/ledwall')
+const webSocket = require('./src/websocket')
 
 var script
 
@@ -106,6 +99,12 @@ function init () {
     res.send('socket = connectWebsocket("' +
       config.web.websocket.address + '")'
     )
+  })
+  web.get('/*', (req, res) => {
+    res.sendFile(path.join(__dirname, config.web.root, 'index.html'));
+  });
+  app.on('error', err => {
+    console.error('server error', err)
   })
   web.listen(config.web.port)
 
