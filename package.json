@@ -1,0 +1,40 @@
+{
+  "name": "led-matrix",
+  "version": "1.0.0",
+  "description": "Simple interface for running small scripts to render on an led matrix.",
+  "main": "index.js",
+  "scripts": {
+    "start": "NODE_ENV=production node app/index.js",
+    "dev": "NODE_ENV=development nodemon --watch index.js --watch app/ --watch config/ app/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Garogat/led.git"
+  },
+  "keywords": [
+    "led",
+    "ws2812b",
+    "matrix",
+    "ledwall"
+  ],
+  "author": "Anton Bracke <anton@ju60.de>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Garogat/led/issues"
+  },
+  "homepage": "https://github.com/Garogat/led#readme",
+  "dependencies": {
+    "dotenv": "^6.1.0",
+    "express": "^4.16.4",
+    "ws": "^6.1.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.9.0",
+    "eslint-config-airbnb": "^17.1.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jsx-a11y": "^6.1.2",
+    "eslint-plugin-react": "^7.11.1",
+    "nodemon": "^1.18.7"
+  }
+}
