@@ -1,308 +1,274 @@
-'use strict'
+const EventEmitter = require('events');
+const Remotes = require('./remotes');
 
-const Remotes = require('./remotes')
-const EventEmitter = require('events')
 class MyEmitter extends EventEmitter {}
-const systemEvents = new MyEmitter()
-const scriptEvents = new MyEmitter()
+const systemEvents = new MyEmitter();
+const scriptEvents = new MyEmitter();
 
-const ACTIONS = Object.freeze({'none': 0, 'start': 1, 'stop': 2, 'restart': 3, 'resume': 4, 'pause': 5})
+const ACTIONS = Object.freeze({
+  none: 0, start: 1, stop: 2, restart: 3, resume: 4, pause: 5,
+});
 
-var size = 0
-var action = ACTIONS.none
-var leds = []
-var buffer = []
-var running
-var tick = 500
-var renderSpeed = 100
+let size = 0;
+let action = ACTIONS.none;
+const leds = [];
+const buffer = [];
+let running;
+let tick = 500;
+const renderSpeed = 100;
 
-// EXPORTS
-exports = module.exports = {
-  'init': init,
-  'start': start,
-  'stop': stop,
-  'restart': restart,
-  'resume': resume,
-  'pause': pause,
-  'on': on,
-  'onSystem': onSystem,
-  'size': size,
-  'setTick': setTick,
+function init(_size) {
+  size = _size;
+  exports.size = size;
 
-  'feedback': feedback,
-
-  'led': ledXY,
-  'ledXY': ledXY,
-  'ledID': ledID,
-  'fill': fill,
-  'clear': clear,
-  'toArray': toArray,
-  'toString': toString,
-
-  'Drops': Drops,
-  'Rect': Rect,
-
-  'RGB': RGB,
-  'EQAULS_RGB': EQAULS_RGB,
-  'RGB_TO_STRING': RGB_TO_STRING,
-  'HSV_TO_RGB': HSV_TO_RGB,
-  'RND': RND,
-  'RND_COLOR': RND_COLOR
-}
-
-function init (_size) {
-  size = _size
-  exports.size = size
-
-  for (let i = 0; i < size * size; i++) {
-    leds[i] = RGB(0, 0, 0)
+  for (let i = 0; i < size * size; i += 1) {
+    leds[i] = RGB(0, 0, 0);
   }
-  loop()
-  renderLoop()
-  scriptEvents.emit('loaded')
+  loop();
+  renderLoop();
+  scriptEvents.emit('loaded');
 
-  Remotes.init()
+  // Remotes.init();
   Remotes.on('button', (id, btns) => {
     if (btns.plus && btns.minus) {
-      restart()
+      restart();
     }
     if (btns.btn1) {
-      pause()
+      pause();
     }
     if (btns.btn2) {
-      resume()
+      resume();
     }
     if (btns.minus) {
-      setTick(tick + 100)
+      setTick(tick + 100);
     }
     if (btns.plus) {
-      setTick(tick - 100)
+      setTick(tick - 100);
     }
-    scriptEvents.emit('input', id, btns)
-  })
+    scriptEvents.emit('input', id, btns);
+  });
 }
 
 // ////////////////////////////////////////////////////////////////////////
 // system
 // ////////////////////////////////////////////////////////////////////////
-function start () {
-  action = ACTIONS.start
+function start() {
+  action = ACTIONS.start;
 }
 
-function stop () {
-  action = ACTIONS.stop
+function stop() {
+  action = ACTIONS.stop;
 }
 
-function restart () {
-  action = ACTIONS.restart
+function restart() {
+  action = ACTIONS.restart;
 }
 
-function resume () {
-  action = ACTIONS.resume
+function resume() {
+  action = ACTIONS.resume;
 }
 
-function pause () {
-  action = ACTIONS.pause
+function pause() {
+  action = ACTIONS.pause;
 }
 
-function loop () {
+function loop() {
   switch (action) {
     case ACTIONS.start:
-      clear()
-      running = true
-      scriptEvents.emit('started')
-      break
+      clear();
+      running = true;
+      scriptEvents.emit('started');
+      break;
     case ACTIONS.stop:
-      running = false
-      scriptEvents.emit('stopped')
-      scriptEvents.removeAllListeners()
-      clear()
-      break
+      running = false;
+      scriptEvents.emit('stopped');
+      scriptEvents.removeAllListeners();
+      clear();
+      break;
     case ACTIONS.restart:
-      running = false
-      scriptEvents.emit('stopped')
-      clear()
-      running = true
-      scriptEvents.emit('started')
-      break
+      running = false;
+      scriptEvents.emit('stopped');
+      clear();
+      running = true;
+      scriptEvents.emit('started');
+      break;
     case ACTIONS.resume:
       if (!running) {
-        running = true
-        scriptEvents.emit('resumed')
+        running = true;
+        scriptEvents.emit('resumed');
       }
-      break
+      break;
     case ACTIONS.pause:
       if (running) {
-        running = false
-        scriptEvents.emit('paused')
+        running = false;
+        scriptEvents.emit('paused');
       }
-      break
+      break;
     default:
-      break
+      break;
   }
-  action = ACTIONS.none
+  action = ACTIONS.none;
 
   if (running) {
-    scriptEvents.emit('update')
-    setTimeout(loop, tick)
+    scriptEvents.emit('update');
+    setTimeout(loop, tick);
   } else {
-    setTimeout(loop, 10)
+    setTimeout(loop, 10);
   }
 }
 
-function renderLoop () {
-  scriptEvents.emit('draw')
-  for (let i = 0; i < size * size; i++) {
+function renderLoop() {
+  scriptEvents.emit('draw');
+  for (let i = 0; i < size * size; i += 1) {
     if (!(i in buffer) || !EQAULS_RGB(leds[i], buffer[i])) {
-      systemEvents.emit('broadcastLed', i, leds[i])
-      buffer[i] = leds[i]
+      systemEvents.emit('broadcastLed', i, leds[i]);
+      buffer[i] = leds[i];
     }
   }
-  systemEvents.emit('showLeds')
-  setTimeout(renderLoop, renderSpeed)
+  systemEvents.emit('showLeds');
+  setTimeout(renderLoop, renderSpeed);
 }
 
-function onSystem (event, cb) {
-  systemEvents.on(event, cb)
+function onSystem(event, cb) {
+  systemEvents.on(event, cb);
 }
 
-function on (event, cb) {
-  scriptEvents.on(event, cb)
+function on(event, cb) {
+  scriptEvents.on(event, cb);
 }
 
-function setTick (_tick) {
+function setTick(_tick) {
   if (_tick >= 10) {
-    tick = _tick
+    tick = _tick;
   }
 }
 
-function feedback () {
-  Remotes.feedback()
+function feedback() {
+  Remotes.feedback();
 }
 
 // ////////////////////////////////////////////////////////////////////////
 // led functions
 // ////////////////////////////////////////////////////////////////////////
-function ledXY (x, y, rgb) {
-  x = Math.round(x)
-  y = Math.round(y)
+function ledXY(_x, _y, rgb) {
+  const x = Math.round(_x);
+  const y = Math.round(_y);
   if (x > size - 1 || y > size - 1 || x < 0 || y < 0) {
-    return
+    return;
   }
-  ledID(y * size + x, rgb)
+  ledID(y * size + x, rgb);
 }
 
-function ledID (id, rgb) {
+function ledID(id, rgb) {
   if (typeof rgb === 'undefined') {
-    return
+    return;
   }
   if (!EQAULS_RGB(leds[id], rgb)) {
-    leds[id] = rgb
+    leds[id] = rgb;
   }
 }
 
-function fill (rgb) {
-  for (let i = 0; i < size * size; i++) {
-    ledID(i, rgb)
+function fill(rgb) {
+  for (let i = 0; i < size * size; i += 1) {
+    ledID(i, rgb);
   }
 }
 
-function clear () {
-  fill(RGB(0, 0, 0))
+function clear() {
+  fill(RGB(0, 0, 0));
 }
 
-function toArray () {
-  return leds
+function toArray() {
+  return leds;
 }
 
-function toString () {
-  var data = []
-  for (var i = 0; i < leds.length; i++) {
-    data.push(RGB_TO_STRING(leds[i]))
+function toString() {
+  const data = [];
+  for (let i = 0; i < leds.length; i += 1) {
+    data.push(RGB_TO_STRING(leds[i]));
   }
-  return data.join('')
+  return data.join('');
 }
 
 // ////////////////////////////////////////////////////////////////////////
 // Objects
 // ////////////////////////////////////////////////////////////////////////
-function Drops (chance, multiple, color) {
-  this.chance = chance
-  this.multiple = multiple
-  this.color = color
-  this.drops = []
+function Drops(chance, multiple, color) {
+  this.chance = chance;
+  this.multiple = multiple;
+  this.color = color;
+  this.drops = [];
 
-  this.update = function () {
+  this.update = () => {
     // del old drops from screen
-    for (var i = 0; i < this.drops.length; i++) {
-      let x = this.drops[i].x
-      let y = this.drops[i].y
-      ledXY(x, y, RGB(0, 0, 0))
+    for (let i = 0; i < this.drops.length; i += 1) {
+      const { x, y } = this.drops[i];
+      ledXY(x, y, RGB(0, 0, 0));
     }
 
     // del landed drops
-    for (let i = 0; i < this.drops.length; i++) {
+    for (let i = 0; i < this.drops.length; i += 1) {
       if (this.drops[i].y === 9) {
-        this.drops.splice(i, 1)
+        this.drops.splice(i, 1);
       }
     }
 
     // move drops
-    for (let i = 0; i < this.drops.length; i++) {
-      this.drops[i].y = this.drops[i].y + 1
+    for (let i = 0; i < this.drops.length; i += 1) {
+      this.drops[i].y = this.drops[i].y + 1;
     }
 
     // add new drops
     if (RND(0, 100) < this.chance) {
-      for (let i = 0; i < RND(1, this.multiple); i++) {
-        this.drops.push(new Rect('drop', this.color, RND(0, 10), 0, 1, 1))
+      for (let i = 0; i < RND(1, this.multiple); i += 1) {
+        this.drops.push(new Rect('drop', this.color, RND(0, 10), 0, 1, 1));
       }
     }
-  }
+  };
 
-  this.draw = function () {
-    for (var i = 0; i < this.drops.length; i++) {
-      this.drops[i].draw()
+  this.draw = () => {
+    for (let i = 0; i < this.drops.length; i += 1) {
+      this.drops[i].draw();
     }
-  }
+  };
 }
 
-function Rect (name, color, x, y, width, height) {
-  this.name = name
-  this.color = color
-  this.x = x
-  this.y = y
-  this.width = width
-  this.height = height
-  this.draw = function () {
+function Rect(name, color, x, y, width, height) {
+  this.name = name;
+  this.color = color;
+  this.x = x;
+  this.y = y;
+  this.width = width;
+  this.height = height;
+  this.draw = () => {
     // Draw playing object
-    for (var i = 0; i < this.width; i++) {
-      for (var j = 0; j < this.height; j++) {
-        ledXY(this.x + i, this.y + j, this.color)
+    for (let i = 0; i < this.width; i += 1) {
+      for (let j = 0; j < this.height; j += 1) {
+        ledXY(this.x + i, this.y + j, this.color);
       }
     }
-  }
+  };
 }
 
 // static helper
-function RGB (r, g, b) {
+function RGB(r, g, b) {
   return {
-    'r': r,
-    'g': g,
-    'b': b
-  }
+    r,
+    g,
+    b,
+  };
 }
 
-function EQAULS_RGB (one, two) {
-  return (one.r === two.r && one.g === two.g && one.b === two.b)
+function EQAULS_RGB(one, two) {
+  return (one.r === two.r && one.g === two.g && one.b === two.b);
 }
 
-function RGB_TO_STRING (rgb) {
-  let str = ''
-  str += '' + ((rgb.r < 100) ? ((rgb.r >= 10) ? ('0' + rgb.r) : ('00' + rgb.r)) : rgb.r)
-  str += ':' + ((rgb.g < 100) ? ((rgb.g >= 10) ? ('0' + rgb.g) : ('00' + rgb.g)) : rgb.g)
-  str += ':' + ((rgb.b < 100) ? ((rgb.b >= 10) ? ('0' + rgb.b) : ('00' + rgb.b)) : rgb.b)
-  return str
+function RGB_TO_STRING(rgb) {
+  let str = '';
+  str += `${(rgb.r < 100) ? ((rgb.r >= 10) ? (`0${rgb.r}`) : (`00${rgb.r}`)) : rgb.r}`;
+  str += `:${(rgb.g < 100) ? ((rgb.g >= 10) ? (`0${rgb.g}`) : (`00${rgb.g}`)) : rgb.g}`;
+  str += `:${(rgb.b < 100) ? ((rgb.b >= 10) ? (`0${rgb.b}`) : (`00${rgb.b}`)) : rgb.b}`;
+  return str;
 }
 
 /* accepts parameters
@@ -310,61 +276,105 @@ function RGB_TO_STRING (rgb) {
  * OR
  * h, s, v
 */
-function HSV_TO_RGB (h, s, v) {
-  let r, g, b, i, f, p, q, t
-  if (arguments.length === 1) {
-    s = h.s
-    v = h.v
-    h = h.h
+function HSV_TO_RGB(...args) {
+  let h;
+  let s;
+  let v;
+  let r;
+  let g;
+  let b;
+
+  if (args.length === 1) {
+    [{ h, s, v }] = args;
+  } else {
+    [h, s, v] = args;
   }
-  i = Math.floor(h * 6)
-  f = h * 6 - i
-  p = v * (1 - s)
-  q = v * (1 - f * s)
-  t = v * (1 - (1 - f) * s)
+
+  const i = Math.floor(h * 6);
+  const f = h * 6 - i;
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+
   switch (i % 6) {
     case 0:
-      r = v
-      g = t
-      b = p
-      break
+      r = v;
+      g = t;
+      b = p;
+      break;
     case 1:
-      r = q
-      g = v
-      b = p
-      break
+      r = q;
+      g = v;
+      b = p;
+      break;
     case 2:
-      r = p
-      g = v
-      b = t
-      break
+      r = p;
+      g = v;
+      b = t;
+      break;
     case 3:
-      r = p
-      g = q
-      b = v
-      break
+      r = p;
+      g = q;
+      b = v;
+      break;
     case 4:
-      r = t
-      g = p
-      b = v
-      break
+      r = t;
+      g = p;
+      b = v;
+      break;
     case 5:
-      r = v
-      g = p
-      b = q
-      break
+      r = v;
+      g = p;
+      b = q;
+      break;
+    default:
+      break;
   }
   return {
     r: Math.round(r * 255),
     g: Math.round(g * 255),
-    b: Math.round(b * 255)
-  }
+    b: Math.round(b * 255),
+  };
 }
 
-function RND (min, max) {
-  return Math.floor((Math.random() * max) + min)
+function RND(min, max) {
+  return Math.floor((Math.random() * max) + min);
 }
 
-function RND_COLOR () {
-  return RGB(RND(0, 255), RND(0, 255), RND(0, 255))
+function RND_COLOR() {
+  return RGB(RND(0, 255), RND(0, 255), RND(0, 255));
 }
+
+// EXPORTS
+module.exports = {
+  init,
+  start,
+  stop,
+  restart,
+  resume,
+  pause,
+  on,
+  onSystem,
+  size,
+  setTick,
+
+  feedback,
+
+  led: ledXY,
+  ledXY,
+  ledID,
+  fill,
+  clear,
+  toArray,
+  toString,
+
+  Drops,
+  Rect,
+
+  RGB,
+  EQAULS_RGB,
+  RGB_TO_STRING,
+  HSV_TO_RGB,
+  RND,
+  RND_COLOR,
+};
