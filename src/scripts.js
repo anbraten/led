@@ -1,14 +1,8 @@
 const path = require('path');
 const fs = require('fs');
 const log = require('./log');
-const webSocket = require('./websocket');
-const Matrix = require('./matrix');
 
 let script;
-
-function init() {
-
-}
 
 function list(cb) {
   const dir = path.join(__dirname, '..', '..', 'scripts');
@@ -16,52 +10,39 @@ function list(cb) {
     if (e) {
       log(e);
     }
+
     // only list .js files
     cb(files.filter(item => (/(.*).js$/g).test(item)));
   });
 }
 
-function stop() {
+function unload() {
   if (script) {
     const { id } = script;
-    Matrix.stop();
     script = null;
-    delete require.cache[path.join(__dirname, '..', '..', 'scripts', id)];
-    webSocket.broadcast({
-      type: 'script',
-      script: null,
-    });
-    list((files) => {
-      webSocket.broadcast({
-        type: 'scripts',
-        scripts: files,
-      });
-    });
+    delete require.cache[path.join(__dirname, '..', 'scripts', id)];
   }
 }
 
 function load(scriptName) {
   if (script) {
-    stop();
+    unload();
   }
+
   try {
     // eslint-disable-next-line import/no-dynamic-require, global-require
-    script = require(path.join(__dirname, '..', '..', 'scripts', scriptName));
+    script = require(path.join(__dirname, '..', 'scripts', scriptName));
     script.id = scriptName;
-    script.init(Matrix);
-    Matrix.start();
-    webSocket.broadcast({
-      type: 'script',
-      script: script.id,
-    });
+    return script;
   } catch (e) {
     log(e);
   }
+
+  return null;
 }
 
 module.exports = {
-  init,
   list,
   load,
-  stop,
+  unload,
 };

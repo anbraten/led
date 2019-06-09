@@ -1,22 +1,15 @@
 require('dotenv').config();
 
-const Matrix = require('./matrix');
-const Scripts = require('./scripts');
+const Loop = require('./loop');
 const Webserver = require('./webserver');
 const Log = require('./log');
 
-(() => {
+function init() {
   Webserver.init();
 
-  Matrix.init();
+  Loop.init();
 
-  Scripts.init();
+  Log('Ledmatrix V0.1 started');
+}
 
-  const autoStart = process.env.SCRIPT_AUTOSTART;
-
-  if (autoStart || null) {
-    Scripts.launch(autoStart);
-  }
-
-  Log('Ledwall V0.1 started');
-})();
+init();
