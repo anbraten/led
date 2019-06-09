@@ -2,14 +2,17 @@ version: '3'
 
 services:
   ledmatrix:
-    image: anbraten/ledmatrix
+    build: .
     environment:
       PORT: 8080
+      NODE_ENV: development
     labels:
       - traefik.enable=true
-      - traefik.backend=transport
+      - traefik.backend=ledmatrix
       - traefik.frontend.rule=Host:led.example.org
       - traefik.port=8080
     restart: always
-    # ports:
-    #  - 8080:8080
+    ports:
+      - 8080:8080
+    volumes:
+      - ../:/app

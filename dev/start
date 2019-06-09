@@ -2,16 +2,13 @@
 
 # check initial setup
 if [ ! -f /setup_done ]; then
-  cd /app
   npm install
 
   echo "" > /setup_done
 fi
 
-cd /app
-
-if [ -f /dev ]; then
-  npm run watch
+if [[ -n "${NODE_ENV}" ]] && [[ "${NODE_ENV}" == "development" ]]; then
+  npm run dev
 else
   npm run start
 fi

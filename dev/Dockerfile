@@ -1,5 +1,7 @@
 FROM node:12-alpine
 
-COPY bin/start /start
+COPY ./start /start
+
+WORKDIR /app
 
 CMD ["/start"]

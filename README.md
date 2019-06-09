@@ -1,18 +1,17 @@
-# Led
+# Led matrix
 This program written in node is an interface for controlling small scripts / games to use on a led matrix.
 
 ## Installation
 ### Development
 ```
-sudo npm install -g nodemon
-npm install
-nodemon ./server.js --ignore 'scripts/*'
+cd dev/
+docker-compose up
 ```
 
 ### Production (as docker container)
 * Set ```Dir``` to correct directory in run
-* Create docker container with: ```./run```
-* If you want to restart it from now on just run: ```docker restart led```
+* Create docker container with: ```docker-compose up -d```
+* If you want to restart it from now on just run: ```docker-compose restart```
 
 ### Scripts
 You can find a small collection of scripts [here](https://github.com/Garogat/led-scripts).
