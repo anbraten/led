@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
-const websocket = require('./websocket');
+const Websocket = require('./websocket');
+const Log = require('./log');
 
 const app = express();
 
@@ -15,13 +16,13 @@ function init() {
   });
 
   app.on('error', (err) => {
-    console.error('server error', err);
+    Log('server error', err);
   });
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 8080;
   const server = app.listen(port, () => {
-    console.log(`Server listening on port ${port}!`);
-    websocket.init(server);
+    Log(`Server listening on port ${port}!`);
+    Websocket.init(server);
   });
 }
 
