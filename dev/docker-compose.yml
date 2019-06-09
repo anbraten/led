@@ -6,13 +6,17 @@ services:
     environment:
       PORT: 8080
       NODE_ENV: development
-    labels:
-      - traefik.enable=true
-      - traefik.backend=ledmatrix
-      - traefik.frontend.rule=Host:led.example.org
-      - traefik.port=8080
+    restart: always
+    volumes:
+      - ../:/app
+
+  ledmatrix-spa:
+    build: .
+    environment:
+      PORT: 8080
+      NODE_ENV: development
     restart: always
     ports:
       - 8080:8080
     volumes:
-      - ../:/app
+      - ../spa:/app
