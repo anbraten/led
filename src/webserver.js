@@ -1,28 +1,30 @@
 const express = require('express');
 const path = require('path');
+
+const app = express();
+const server = require('http').createServer(app);
+
 const Websocket = require('./websocket');
 const Log = require('./log');
 
-const app = express();
+const PORT = process.env.PORT || 8080;
 
 function init() {
-  const webRoot = path.join(__dirname, '..', '..', 'web');
-
   // Express (static app files)
-  app.use(express.static(webRoot));
+  app.use(express.static(path.join(__dirname, '..', 'spa', 'dist')));
 
-  app.get('/*', (req, res) => {
-    res.sendFile(path.join(webRoot, 'index.html'));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'spa', 'index.html'));
   });
 
   app.on('error', (err) => {
     Log('server error', err);
   });
 
-  const port = process.env.PORT || 8080;
-  const server = app.listen(port, () => {
-    Log(`Server listening on port ${port}!`);
-    Websocket.init(server);
+  Websocket.init(server);
+
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}!`);
   });
 }
 
