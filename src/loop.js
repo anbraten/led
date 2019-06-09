@@ -13,6 +13,12 @@ const renderSpeed = 100;
 let running = false;
 let tick = 500;
 
+function setTick(_tick) {
+  if (_tick >= 10) {
+    tick = _tick;
+  }
+}
+
 function stop() {
   running = false;
   bus.emit('stop');
@@ -59,12 +65,6 @@ function pause() {
   if (running) {
     running = false;
     bus.emit('paused');
-  }
-}
-
-function setTick(_tick) {
-  if (_tick >= 10) {
-    tick = _tick;
   }
 }
 
