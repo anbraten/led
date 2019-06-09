@@ -2,10 +2,6 @@
 
 # check initial setup
 if [ ! -f /setup_done ]; then
-  apk add --no-cache \
-    npm \
-    nodejs
-
   cd /app
   npm install
 
@@ -19,4 +15,3 @@ if [ -f /dev ]; then
 else
   npm run start
 fi
-

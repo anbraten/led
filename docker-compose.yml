@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  transport:
+    build: ./build
+    environment:
+      PORT: 8080
+    labels:
+      - traefik.enable=true
+      - traefik.backend=transport
+      - traefik.frontend.rule=Host:led.ju60.de
+      - traefik.port=8080
+    restart: always
+    ports:
+      - 8080:8080
+    volumes:
+      - ./app:/app
