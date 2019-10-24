@@ -9,7 +9,7 @@ services:
       MATRIX_URL: debug
     restart: always
     volumes:
-      - ../server:/app
+      - ../packages/server:/app
 
   ledmatrix-spa:
     build: .
@@ -20,4 +20,4 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ../app:/app
+      - ../packages/app:/app

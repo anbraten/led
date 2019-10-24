@@ -1,12 +1,12 @@
 const events = require('events');
 const Matrix = require('./matrix');
-const Scripts = require('./scripts');
+const plugins = require('./plugins');
 const Remotes = require('./remotes');
 const Colors = require('./utils/colors');
 const GObjects = require('./utils/gobjects');
 
 // Create an eventEmitter object
-const scriptBus = new events.EventEmitter();
+const pluginBus = new events.EventEmitter();
 const renderSpeed = 100;
 const MATRIX_URL = process.env.MATRIX_URL || null;
 
@@ -34,8 +34,8 @@ function start(name) {
 
   Matrix.clear();
   running = true;
-  const script = Scripts.load(name);
-  script.init({
+  const plugin = plugins.load(name);
+  plugin.init({
     ...Colors,
     ...GObjects,
     led: Matrix.led,
@@ -44,11 +44,11 @@ function start(name) {
     clear: Matrix.clear,
     size: Matrix.size,
     setTick,
-    on: scriptBus.on,
+    on: pluginBus.on,
   });
 
   // FIX: emit via bus not websocket
-  WebSocket.broadcast('script', script.id);
+  WebSocket.broadcast('plugin', plugin.id);
   bus.emit('started');
 }
 
@@ -99,15 +99,15 @@ function init(_bus) {
   bus.on('pause', pause);
   bus.on('resume', resume);
 
-  // events which are allowed to be forwarded to unsafe scripts
-  const scriptEvents = ['started', 'stopped', 'resumed', 'paused', 'update', 'draw', 'input'];
-  scriptEvents.forEach((event) => {
+  // events which are allowed to be forwarded to unsafe plugins
+  const pluginEvents = ['started', 'stopped', 'resumed', 'paused', 'update', 'draw', 'input'];
+  pluginEvents.forEach((event) => {
     bus.on(event, (...args) => {
-      scriptBus.emit(event, ...args);
+      pluginBus.emit(event, ...args);
     });
   });
 
-  Scripts.init(bus);
+  plugins.init(bus);
 
   // TODO: set variable matrix size
   Matrix.init(10);
@@ -140,11 +140,11 @@ function init(_bus) {
   loop();
   renderLoop();
 
-  // Autostart script
-  const autoStart = process.env.SCRIPT_AUTOSTART || null;
+  // Autostart plugin
+  const autoStart = process.env.plugin_AUTOSTART || null;
 
   if (autoStart) {
-    Scripts.launch(autoStart);
+    plugins.launch(autoStart);
   }
 }
 

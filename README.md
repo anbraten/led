@@ -1,5 +1,5 @@
 # Led matrix
-This program written in node is an interface for controlling small scripts / games to use on a led matrix.
+This program written in node is an interface for controlling small plugins / games to use on a led matrix.
 
 ## Installation
 ### Development
@@ -13,20 +13,20 @@ docker-compose up
 * Create docker container with: ```docker-compose up -d```
 * If you want to restart it from now on just run: ```docker-compose restart```
 
-### Scripts
-You can find a small collection of scripts [here](https://github.com/Garogat/led-scripts).
-Download them to your /scripts folder.
+### Plugins
+You can find a small collection of plugins [here](https://github.com/Garogat/led-plugins).
+Download them to your /plugins folder.
 
 ## To-Dos
 * start buffering of leds before updating and send after update
 * add wiimote api for srcipts
-* add step by step button to debug scripts
+* add step by step button to debug plugins
 * add service worker with offline cache for pwa support
 
-## Script development
-A script is a small program / game that renders the led matrix. It can handle user input from a wiimote.
+## Plugin development
+A plugin is a small program / game that renders content on the led matrix. It can handle user input from a wiimote.
 ### Good to know
-* A script can be hot reloaded. So you only have to reload it inside the interface.
+* A plugin can be hot reloaded. So you only have to reload it inside the interface.
 
 ### Example
 
@@ -35,7 +35,7 @@ var Matrix
 
 // EXPORTS
 exports = module.exports = {
-  'name': 'Skeleton', // name of your script
+  'name': 'Skeleton', // name of your plugin
   'init': init
 }
 
@@ -45,11 +45,11 @@ function init (_matrix) {
   Matrix.setTick(1000) // set tick rate to 1 tick per 1000 ms
 
   Matrix.on('started', () => {
-    console.log(exports.name) // executed when your script should start
+    console.log(exports.name) // executed when your plugin should start
   })
 
   Matrix.on('stopped', () => {
-    // executed when your script should stop
+    // executed when your plugin should stop
   })
 
   Matrix.on('update', () => {
@@ -58,7 +58,7 @@ function init (_matrix) {
   })
 
   Matrix.on('draw', () => {
-    // executed when your script should render leds
+    // executed when your plugin should render leds
   })
 }
 ```
@@ -95,13 +95,13 @@ See this list for possible events:
 
 `function () {}`
 
-Emitted when matrix is ready and script can start. After this event the update, draw loop is started.
+Emitted when matrix is ready and plugin can start. After this event the update, draw loop is started.
 
 #### Event `'stopped'`
 
 `function () {}`
 
-Emitted when script is called to stops. After this event the update, draw loop is stopped.
+Emitted when plugin is called to stops. After this event the update, draw loop is stopped.
 
 #### Event `'resumed'`
 
@@ -119,14 +119,14 @@ Emitted when loop is paused.
 
 `function () {}`
 
-Emitted when the matrix loop calls your script to update.
-This is where your scripts logic should mainly happen.
+Emitted when the matrix loop calls your plugin to update.
+This is where your plugins logic should mainly happen.
 
 #### Event `'draw'`
 
 `function () {}`
 
-Emitted when the matrix loop calls your script to render.
+Emitted when the matrix loop calls your plugin to render.
 
 #### Event `'input'`
 
@@ -144,7 +144,7 @@ Int : Size of the matrix.
 <a name="setTick"></a>
 ### Matrix.setTick(speed)
 
-Set the speed you want your scripts logic (update callback) to be executed with.
+Set the speed you want your plugins logic (update callback) to be executed with.
 
 * `speed` Speed in milliseconds.
 

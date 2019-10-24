@@ -2,11 +2,11 @@ const path = require('path');
 const fs = require('fs');
 const log = require('./log');
 
-let script;
+let plugin;
 let bus;
 
 function list(cb) {
-  const dir = path.join(__dirname, '..', 'scripts');
+  const dir = path.join(__dirname, '..', 'plugins');
   fs.readdir(dir, (e, files) => {
     if (e) {
       log(e);
@@ -18,23 +18,23 @@ function list(cb) {
 }
 
 function unload() {
-  if (script) {
-    const { id } = script;
-    script = null;
-    delete require.cache[path.join(__dirname, '..', 'scripts', id)];
+  if (plugin) {
+    const { id } = plugin;
+    plugin = null;
+    delete require.cache[path.join(__dirname, '..', 'plugins', id)];
   }
 }
 
-function load(scriptName) {
-  if (script) {
+function load(pluginName) {
+  if (plugin) {
     unload();
   }
 
   try {
     // eslint-disable-next-line import/no-dynamic-require, global-require
-    script = require(path.join(__dirname, '..', 'scripts', scriptName));
-    script.id = scriptName;
-    return script;
+    plugin = require(path.join(__dirname, '..', 'plugins', pluginName));
+    plugin.id = pluginName;
+    return plugin;
   } catch (e) {
     log(e);
   }
@@ -45,9 +45,9 @@ function load(scriptName) {
 function init(_bus) {
   bus = _bus;
 
-  bus.on('scripts:get', () => {
-    list((scripts) => {
-      bus.emit('scripts', scripts);
+  bus.on('plugins:get', () => {
+    list((plugins) => {
+      bus.emit('plugins', plugins);
     });
   });
 }

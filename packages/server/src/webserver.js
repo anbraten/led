@@ -45,9 +45,9 @@ function initSocket() {
       }
     });
 
-    socket.on('start', (script) => {
+    socket.on('start', (plugin) => {
       if (!isAllowed(socket)) { return; }
-      bus.emit('start', script);
+      bus.emit('start', plugin);
     });
 
     socket.on('stop', () => {
@@ -70,12 +70,12 @@ function initSocket() {
       bus.emit('resume');
     });
 
-    socket.on('scripts', () => {
+    socket.on('plugins', () => {
       if (!isAllowed(socket)) { return; }
-      bus.once('scripts', (scripts) => {
-        socket.emit('scripts', scripts);
+      bus.once('plugins', (plugins) => {
+        socket.emit('plugins', plugins);
       });
-      bus.emit('scripts:get');
+      bus.emit('plugins:get');
     });
 
     socket.on('logout', () => {
@@ -98,10 +98,10 @@ function init(_bus) {
   bus = _bus;
 
   // Express (static app files)
-  app.use(express.static(path.join(__dirname, '..', 'spa', 'dist')));
+  app.use(express.static(path.join(__dirname, '..', 'app', 'dist')));
 
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'spa', 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'app', 'index.html'));
   });
 
   app.on('error', (err) => {

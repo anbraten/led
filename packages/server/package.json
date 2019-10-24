@@ -1,29 +1,18 @@
 {
   "name": "led-server",
   "version": "0.0.1",
-  "description": "Simple interface for running small scripts to render on an led matrix.",
-  "main": "index.js",
-  "scripts": {
-    "start": "NODE_ENV=production node src/index.js",
-    "dev": "NODE_ENV=development nodemon --watch src/ src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Garogat/ledmatrix.git"
-  },
-  "keywords": [
-    "led",
-    "ws2812b",
-    "matrix",
-    "ledmatrix"
-  ],
-  "author": "Anton Bracke <anton@ju60.de>",
+  "description": "Simple server to run small plugins / games on a led matrix.",
+  "author": "Anton Bracke",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Garogat/ledmatrix/issues"
+    "url": "https://github.com/anbraten/ledmatrix/issues"
   },
-  "homepage": "https://github.com/Garogat/ledmatrix#readme",
+  "homepage": "https://github.com/anbraten/ledmatrix#readme",
+  "scripts": {
+    "start": "NODE_ENV=production node src/index.js",
+    "dev": "NODE_ENV=development nodemon --watch src/ --watch plugins/ src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
     "app": "^0.1.0",
     "dotenv": "^8.2.0",
