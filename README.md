@@ -14,7 +14,7 @@ docker-compose up
 * If you want to restart it from now on just run: ```docker-compose restart```
 
 ### Plugins
-You can find a small collection of plugins [here](https://github.com/Garogat/led-plugins).
+You can find a small collection of plugins [here](https://github.com/anbraten/led-plugins).
 Download them to your /plugins folder.
 
 ## To-Dos
