@@ -26,18 +26,18 @@
   "homepage": "https://github.com/Garogat/ledmatrix#readme",
   "dependencies": {
     "app": "^0.1.0",
-    "dotenv": "^6.2.0",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "serialport": "^7.1.5",
     "server": "^1.0.19",
-    "socket.io": "^1.0.0"
+    "socket.io": "^2.3.0"
   },
   "devDependencies": {
-    "eslint": "^5.16.0",
-    "eslint-config-airbnb": "^17.1.0",
-    "eslint-plugin-import": "^2.17.3",
-    "eslint-plugin-jsx-a11y": "^6.2.1",
-    "eslint-plugin-react": "^7.13.0",
-    "nodemon": "^1.19.1"
+    "eslint": "^6.5.1",
+    "eslint-config-airbnb": "^18.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jsx-a11y": "^6.2.3",
+    "eslint-plugin-react": "^7.16.0",
+    "nodemon": "^1.19.4"
   }
 }
