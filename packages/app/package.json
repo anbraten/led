@@ -1,6 +1,6 @@
 {
   "name": "led-app",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A led matrix control interface.",
   "author": "Anton Bracke",
   "scripts": {
