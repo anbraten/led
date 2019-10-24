@@ -40,7 +40,8 @@ export default {
   ** Nuxt.js modules
   */
   modules: [
-    '@nuxtjs/pwa'
+    '@nuxtjs/pwa',
+    '@nuxtjs/proxy'
   ],
   /*
   ** Build configuration
@@ -51,5 +52,8 @@ export default {
     */
     extend (config, ctx) {
     }
+  },
+  proxy: {
+    '/api': 'http://ledmatrix-server:8080/api',
   }
 }

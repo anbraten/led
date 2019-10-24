@@ -14,7 +14,7 @@ function init() {
 
   Loop.init(bus);
 
-  Log('Ledmatrix V0.1 started');
+  Log('Ledmatrix started');
 }
 
 init();
