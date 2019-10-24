@@ -6,9 +6,10 @@ services:
     environment:
       PORT: 8080
       NODE_ENV: development
+      MATRIX_URL: debug
     restart: always
     volumes:
-      - ../:/app
+      - ../server:/app
 
   ledmatrix-spa:
     build: .
@@ -19,4 +20,4 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ../spa:/app
+      - ../app:/app

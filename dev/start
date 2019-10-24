@@ -7,8 +7,4 @@ if [ ! -f /setup_done ]; then
   echo "" > /setup_done
 fi
 
-if [[ -n "${NODE_ENV}" ]] && [[ "${NODE_ENV}" == "development" ]]; then
-  npm run dev
-else
-  npm run start
-fi
+npm run dev

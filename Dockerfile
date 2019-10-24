@@ -1,21 +1,24 @@
 FROM node:12-alpine
 
-RUN mkdir -p /app/node_modules && mkdir -p /app/spa/node_modules && chown -R node:node /app
+RUN mkdir -p /app/server/node_modules && mkdir -p /app/app/node_modules && chown -R node:node /app
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY spa/package*.json ./spa/
+COPY package*.json .
+COPY server/package*.json ./server/
+COPY app/package*.json ./app/
+
+RUN npm i
 
 USER node
 
-RUN npm install
-RUN cd spa/ && npm install
+RUN cd server/ && npm install
+RUN cd app/ && npm install
 
 COPY --chown=node:node . .
 
-RUN cd spa/ && npm run build
+RUN cd app/ && npm run build
 
 EXPOSE 8080
 
-CMD [ "npm", "run", "start" ]
+CMD [ "lerna", "run", "start" ]
