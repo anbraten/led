@@ -13,6 +13,7 @@ let running = false;
 
 const RENDER_SPEED = process.env.render_speed || 30;
 const AUTOSTART = process.env.AUTOSTART || null;
+const SCRIPT_DIR = process.env.SCRIPT_DIR || '../../scripts/';
 
 function list(cb) {
   const dir = path.join(__dirname, '..', 'plugins');
@@ -30,7 +31,7 @@ function unload() {
   if (script) {
     const { id } = script;
     script = null;
-    delete require.cache[path.join(__dirname, '..', 'plugins', id)];
+    delete require.cache[path.join(__dirname, SCRIPT_DIR, id)];
   }
 }
 
@@ -41,7 +42,7 @@ function load(pluginName) {
 
   try {
     // eslint-disable-next-line import/no-dynamic-require, global-require
-    script = require(path.join(__dirname, '..', 'plugins', pluginName));
+    script = require(path.join(__dirname, SCRIPT_DIR, pluginName));
     script.id = pluginName;
     return script;
   } catch (e) {
