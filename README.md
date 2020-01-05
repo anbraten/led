@@ -1,5 +1,5 @@
 # Led matrix
-This program written in node is an interface for controlling small plugins / games to use on a led matrix.
+This program written in node is an interface for controlling small scripts to use on a led matrix.
 
 ## Installation
 ### Development

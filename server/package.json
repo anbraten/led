@@ -1,0 +1,21 @@
+{
+  "name": "led-server",
+  "version": "2.0.0",
+  "author": "Anton Bracke (https://beechy.de)",
+  "license": "MIT",
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "start": "node src/index.js",
+    "lint": "eslint --ext .js,.vue --ignore-path ../.gitignore ."
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "socket.io": "^2.3.0"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "nodemon": "^2.0.2"
+  }
+}
