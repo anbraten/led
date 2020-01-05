@@ -1,6 +1,6 @@
 const socketIo = require('socket.io');
 const http = require('http');
-const scripts = require('./scripts');
+const loop = require('./loop');
 const log = require('./log');
 
 const PORT = process.env.PORT || 8080;
@@ -11,6 +11,12 @@ const server = http.createServer();
 let io;
 let connectedClients;
 
+function broadcast(...args) {
+  if (io) {
+    io.emit(...args);
+  }
+}
+
 function init() {
   io = socketIo(server, { path: '/api' });
   connectedClients = 0;
@@ -20,6 +26,8 @@ function init() {
     let authenticated = !PASSWORD || false;
 
     connectedClients += 1;
+
+    // socket emit complete matrix buffer
 
     socket.on('status', () => {
       const status = {
@@ -46,33 +54,42 @@ function init() {
 
     socket.on('start', (script) => {
       if (!authenticated) { return; }
-      scripts.start(script);
-      io.emit('plugin', script);
+      const res = loop.start(script);
+      if (!res) {
+        socket.emit('error', 'failed loading script');
+        return;
+      }
+      broadcast('script', script);
+      broadcast('running', true);
     });
 
     socket.on('stop', () => {
       if (!authenticated) { return; }
-      scripts.stop();
+      loop.stop();
+      broadcast('script', null);
+      broadcast('running', false);
     });
 
     socket.on('restart', () => {
       if (!authenticated) { return; }
-      scripts.restart();
+      loop.restart();
     });
 
     socket.on('pause', () => {
       if (!authenticated) { return; }
-      scripts.pause();
+      loop.pause();
+      broadcast('running', false);
     });
 
     socket.on('resume', () => {
       if (!authenticated) { return; }
-      scripts.resume();
+      loop.resume();
+      broadcast('running', true);
     });
 
     socket.on('scripts', async () => {
       if (!authenticated) { return; }
-      socket.emit('scripts', await scripts.list());
+      socket.emit('scripts', await loop.list());
     });
 
     socket.on('disconnect', () => {
@@ -83,12 +100,6 @@ function init() {
   server.listen(PORT, () => {
     log(`Server listening on port ${PORT}!`);
   });
-}
-
-function broadcast(...args) {
-  if (io) {
-    io.emit(...args);
-  }
 }
 
 module.exports = {

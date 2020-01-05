@@ -23,7 +23,7 @@ function list(cb) {
     }
 
     // only list .js files
-    cb(files.filter(item => (/(.*).js$/g).test(item)));
+    cb(files.filter((item) => (/(.*).js$/g).test(item)));
   });
 }
 
@@ -130,6 +130,7 @@ function init() {
     if (script) {
       matrix.draw((position, color) => {
         socket.broadcast('pixel', { position, color });
+        // TODO: draw to matrix
       });
     }
   }, RENDER_SPEED);
