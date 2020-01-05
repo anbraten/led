@@ -52,12 +52,6 @@ function clear() {
   fill(RGB(0, 0, 0));
 }
 
-function init({ x, y }) {
-  size = { x, y };
-  pixels = [];
-  clear();
-}
-
 function getSize() {
   return size;
 }
@@ -84,8 +78,13 @@ function draw(cb) {
   pixelBuffer = pixels;
 }
 
+function init({ x, y }) {
+  size = { x, y };
+  pixels = [];
+  clear();
+}
 
-module.export = {
+module.exports = {
   init,
   getSize,
   setPixel,
